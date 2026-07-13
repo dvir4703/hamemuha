@@ -4,6 +4,12 @@ import { app, BrowserWindow } from 'electron';
 
 import { databaseConnection } from './database/connection';
 import { registerIpcHandlers } from './ipc/handlers';
+import {
+  registerImageProtocol,
+  registerImageScheme,
+} from './services/file.service';
+
+registerImageScheme();
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -39,6 +45,7 @@ function createWindow(): void {
 
 void app.whenReady().then(() => {
   databaseConnection.getConnection();
+  registerImageProtocol();
   registerIpcHandlers();
   createWindow();
 

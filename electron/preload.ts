@@ -1,5 +1,33 @@
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 
-contextBridge.exposeInMainWorld('electronAPI', {
-  platform: process.platform,
-});
+import type { ElectronApi } from '../src/types';
+
+const api: ElectronApi = {
+  quiz: {
+    getAll: () => ipcRenderer.invoke('quiz:getAll'),
+    getById: (id) => ipcRenderer.invoke('quiz:getById', id),
+    create: (data) => ipcRenderer.invoke('quiz:create', data),
+    update: (id, data) => ipcRenderer.invoke('quiz:update', id, data),
+    delete: (id) => ipcRenderer.invoke('quiz:delete', id),
+    duplicate: (id) => ipcRenderer.invoke('quiz:duplicate', id),
+    search: (query) => ipcRenderer.invoke('quiz:search', query),
+  },
+  contestant: {
+    getByQuizId: (quizId) =>
+      ipcRenderer.invoke('contestant:getByQuizId', quizId),
+    create: (data) => ipcRenderer.invoke('contestant:create', data),
+    update: (id, data) => ipcRenderer.invoke('contestant:update', id, data),
+    delete: (id) => ipcRenderer.invoke('contestant:delete', id),
+  },
+  file: {
+    selectAndSaveImage: (category) =>
+      ipcRenderer.invoke('file:selectAndSaveImage', category),
+    getImageUrl: (relativePath) =>
+      ipcRenderer.invoke('file:getImageUrl', relativePath),
+  },
+  system: {
+    platform: process.platform,
+  },
+};
+
+contextBridge.exposeInMainWorld('api', api);

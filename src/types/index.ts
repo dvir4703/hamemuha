@@ -72,3 +72,52 @@ export interface ContestantResult {
   wrong_count: number;
   hints_used: number;
 }
+
+export interface QuizSummary extends Quiz {
+  questionCount: number;
+  contestantCount: number;
+}
+
+export interface QuizMutationInput {
+  name: string;
+  logoPath?: string | null;
+}
+
+export interface ContestantCreateInput {
+  quizId: number;
+  name: string;
+  displayOrder: number;
+}
+
+export interface ContestantUpdateInput {
+  name: string;
+  displayOrder: number;
+}
+
+export interface ElectronApi {
+  quiz: {
+    getAll: () => Promise<QuizSummary[]>;
+    getById: (id: number) => Promise<Quiz | null>;
+    create: (data: QuizMutationInput) => Promise<Quiz>;
+    update: (id: number, data: QuizMutationInput) => Promise<Quiz | null>;
+    delete: (id: number) => Promise<boolean>;
+    duplicate: (id: number) => Promise<Quiz>;
+    search: (query: string) => Promise<QuizSummary[]>;
+  };
+  contestant: {
+    getByQuizId: (quizId: number) => Promise<Contestant[]>;
+    create: (data: ContestantCreateInput) => Promise<Contestant>;
+    update: (
+      id: number,
+      data: ContestantUpdateInput,
+    ) => Promise<Contestant | null>;
+    delete: (id: number) => Promise<boolean>;
+  };
+  file: {
+    selectAndSaveImage: (category: string) => Promise<string | null>;
+    getImageUrl: (relativePath: string) => Promise<string>;
+  };
+  system: {
+    platform: NodeJS.Platform;
+  };
+}

@@ -1,7 +1,11 @@
 /// <reference types="vite/client" />
 
-interface Window {
-  electronAPI: {
-    platform: NodeJS.Platform;
-  };
+import type { ElectronApi } from './types';
+
+declare global {
+  interface Window {
+    api: ElectronApi;
+  }
 }
+
+export {};
