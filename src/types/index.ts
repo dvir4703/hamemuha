@@ -78,6 +78,17 @@ export interface QuizSummary extends Quiz {
   contestantCount: number;
 }
 
+export interface QuestionSummary extends Question {
+  contestant_name: string;
+  answerCount: number;
+  hintCount: number;
+}
+
+export interface QuestionWithRelations extends Question {
+  answers: Answer[];
+  hints: Hint[];
+}
+
 export interface QuizMutationInput {
   name: string;
   logoPath?: string | null;
@@ -92,6 +103,36 @@ export interface ContestantCreateInput {
 export interface ContestantUpdateInput {
   name: string;
   displayOrder: number;
+}
+
+export interface AnswerInput {
+  answerText: string;
+  imagePath?: string | null;
+  isCorrect: boolean;
+  displayOrder: number;
+}
+
+export interface HintInput {
+  hintType: HintType;
+  hintText?: string | null;
+  hintOrder: number;
+  pointsPenalty: number;
+}
+
+export interface QuestionMutationInput {
+  quizId: number;
+  contestantId: number;
+  questionType: QuestionType;
+  questionText: string;
+  imagePath?: string | null;
+  explanation?: string | null;
+  correctAnswerText?: string | null;
+  points: number;
+  timeLimit?: number | null;
+  displayOrder?: number;
+  shuffleAnswers: boolean;
+  answers: AnswerInput[];
+  hints: HintInput[];
 }
 
 export interface ElectronApi {
@@ -112,6 +153,18 @@ export interface ElectronApi {
       data: ContestantUpdateInput,
     ) => Promise<Contestant | null>;
     delete: (id: number) => Promise<boolean>;
+  };
+  question: {
+    getByQuizId: (quizId: number) => Promise<QuestionSummary[]>;
+    getById: (id: number) => Promise<QuestionWithRelations | null>;
+    create: (data: QuestionMutationInput) => Promise<QuestionWithRelations>;
+    update: (
+      id: number,
+      data: QuestionMutationInput,
+    ) => Promise<QuestionWithRelations | null>;
+    delete: (id: number) => Promise<boolean>;
+    reorder: (contestantId: number, orderedIds: number[]) => Promise<boolean>;
+    duplicate: (id: number) => Promise<QuestionWithRelations>;
   };
   file: {
     selectAndSaveImage: (category: string) => Promise<string | null>;

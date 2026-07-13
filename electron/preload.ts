@@ -19,6 +19,16 @@ const api: ElectronApi = {
     update: (id, data) => ipcRenderer.invoke('contestant:update', id, data),
     delete: (id) => ipcRenderer.invoke('contestant:delete', id),
   },
+  question: {
+    getByQuizId: (quizId) => ipcRenderer.invoke('question:getByQuizId', quizId),
+    getById: (id) => ipcRenderer.invoke('question:getById', id),
+    create: (data) => ipcRenderer.invoke('question:create', data),
+    update: (id, data) => ipcRenderer.invoke('question:update', id, data),
+    delete: (id) => ipcRenderer.invoke('question:delete', id),
+    reorder: (contestantId, orderedIds) =>
+      ipcRenderer.invoke('question:reorder', contestantId, orderedIds),
+    duplicate: (id) => ipcRenderer.invoke('question:duplicate', id),
+  },
   file: {
     selectAndSaveImage: (category) =>
       ipcRenderer.invoke('file:selectAndSaveImage', category),

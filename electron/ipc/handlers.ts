@@ -15,6 +15,15 @@ import {
   searchQuizzes,
   updateQuiz,
 } from '../database/dal/quizzes';
+import {
+  createQuestion,
+  deleteQuestion,
+  duplicateQuestion,
+  getQuestionById,
+  getQuestionsByQuizId,
+  reorderQuestions,
+  updateQuestion,
+} from '../database/dal/questions';
 import { getImageUrl, saveImage } from '../services/file.service';
 
 function requirePositiveId(id: number): number {
@@ -53,6 +62,28 @@ export function registerIpcHandlers(): void {
   );
   ipcMain.handle('contestant:delete', (_event, id: number) =>
     deleteContestant(requirePositiveId(id)),
+  );
+
+  ipcMain.handle('question:getByQuizId', (_event, quizId: number) =>
+    getQuestionsByQuizId(requirePositiveId(quizId)),
+  );
+  ipcMain.handle('question:getById', (_event, id: number) =>
+    getQuestionById(requirePositiveId(id)),
+  );
+  ipcMain.handle('question:create', (_event, data) => createQuestion(data));
+  ipcMain.handle('question:update', (_event, id: number, data) =>
+    updateQuestion(requirePositiveId(id), data),
+  );
+  ipcMain.handle('question:delete', (_event, id: number) =>
+    deleteQuestion(requirePositiveId(id)),
+  );
+  ipcMain.handle(
+    'question:reorder',
+    (_event, contestantId: number, orderedIds: number[]) =>
+      reorderQuestions(requirePositiveId(contestantId), orderedIds),
+  );
+  ipcMain.handle('question:duplicate', (_event, id: number) =>
+    duplicateQuestion(requirePositiveId(id)),
   );
 
   ipcMain.handle(

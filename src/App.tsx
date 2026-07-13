@@ -1,7 +1,8 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import Home from './pages/Home/Home';
-import QuizEditorPlaceholder from './pages/QuizEditor/QuizEditorPlaceholder';
+import QuizEditor from './pages/QuizEditor/QuizEditor';
+import QuestionForm from './pages/QuizEditor/QuestionForm';
 
 export default function App() {
   return (
@@ -10,9 +11,14 @@ export default function App() {
     >
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/quizzes/:quizId/edit" element={<QuizEditor />} />
         <Route
-          path="/quizzes/:quizId/edit"
-          element={<QuizEditorPlaceholder />}
+          path="/quizzes/:quizId/questions/new"
+          element={<QuestionForm />}
+        />
+        <Route
+          path="/quizzes/:quizId/questions/:questionId/edit"
+          element={<QuestionForm />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -21,6 +21,9 @@
   },
   "packageManager": "pnpm@11.7.0",
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/assistant": "^5.2.9",
     "@fontsource-variable/rubik": "^5.2.8",
     "better-sqlite3": "^12.11.1",
