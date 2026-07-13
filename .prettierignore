@@ -1,0 +1,5 @@
+dist
+dist-electron
+dist-renderer
+node_modules
+pnpm-lock.yaml

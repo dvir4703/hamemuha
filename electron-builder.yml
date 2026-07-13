@@ -1,0 +1,15 @@
+appId: com.quizexperience.app
+productName: 'החידון והחוויה'
+directories:
+  output: dist
+files:
+  - dist-renderer/**/*
+  - dist-electron/**/*
+  - package.json
+asarUnpack:
+  - node_modules/better-sqlite3/**/*
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
