@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { LiveQuestionRenderer } from '../../components/live/LiveQuestionRenderer';
 import { useKeyboard } from '../../hooks/useKeyboard';
 import { selectCurrentQuestion, useLiveStore } from '../../store/liveStore';
 
@@ -66,6 +67,10 @@ export default function LiveGame() {
   const resetGame = useLiveStore((state) => state.resetGame);
   const clearError = useLiveStore((state) => state.clearError);
   const [exitRequested, setExitRequested] = useState(false);
+  const isHintQuestion =
+    currentQuestion?.question_type === 'complete_sentence' ||
+    currentQuestion?.question_type === 'association_hints';
+  const isOpenAnswerQuestion = currentQuestion?.question_type === 'open_answer';
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -78,17 +83,21 @@ export default function LiveGame() {
   }, [loadQuiz, quizId, resetGame]);
 
   const handleMarkCorrect = useCallback(() => {
-    submitAnswer(true, 10);
-  }, [submitAnswer]);
+    if (gamePhase !== 'playing' || !isOpenAnswerQuestion) return;
+    submitAnswer(true, potentialPoints);
+  }, [gamePhase, isOpenAnswerQuestion, potentialPoints, submitAnswer]);
   const handleMarkWrong = useCallback(() => {
+    if (gamePhase !== 'playing' || !isOpenAnswerQuestion) return;
     submitAnswer(false, 0);
-  }, [submitAnswer]);
+  }, [gamePhase, isOpenAnswerQuestion, submitAnswer]);
   const handleExitRequest = useCallback(() => {
     setExitRequested(true);
   }, []);
 
   useKeyboard({
     enabled: !isLoading && !exitRequested,
+    hintEnabled: gamePhase === 'playing' && isHintQuestion,
+    judgementEnabled: gamePhase === 'playing' && isOpenAnswerQuestion,
     onExitRequest: handleExitRequest,
     onMarkCorrect: handleMarkCorrect,
     onMarkWrong: handleMarkWrong,
@@ -129,7 +138,7 @@ export default function LiveGame() {
         <header className="flex flex-col gap-4 rounded-[26px] bg-ink px-6 py-5 text-white shadow-hero sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold tracking-wide text-mint">
-              מצב לייב · שלד בדיקה
+              מצב לייב · מסכי שאלות
             </p>
             <h1 className="mt-1 font-display text-2xl font-black">
               מנוע הניווט
@@ -303,24 +312,12 @@ export default function LiveGame() {
                   </div>
                 ) : (
                   <div className="py-8">
-                    <p className="text-xs font-bold text-ink/35">
-                      טקסט שאלה גולמי
-                    </p>
-                    <p className="mt-3 text-2xl font-bold leading-relaxed">
-                      {currentQuestion?.question_text}
-                    </p>
-                    <div className="mt-8 flex flex-wrap gap-2 text-sm">
-                      <span className="rounded-xl bg-canvas px-3 py-2 font-bold">
-                        {currentQuestion?.question_type}
-                      </span>
-                      <span className="rounded-xl bg-amber/15 px-3 py-2 font-bold text-amber-dark">
-                        {potentialPoints} נק׳ פוטנציאליות
-                      </span>
-                      <span className="rounded-xl bg-violet/10 px-3 py-2 font-bold text-violet">
-                        {revealedHints}/{currentQuestion?.hints.length ?? 0}{' '}
-                        רמזים
-                      </span>
-                    </div>
+                    {currentQuestion ? (
+                      <LiveQuestionRenderer
+                        question={currentQuestion}
+                        revealedHints={revealedHints}
+                      />
+                    ) : null}
                   </div>
                 )}
               </>
@@ -389,13 +386,16 @@ export default function LiveGame() {
                   >
                     הבאה <ArrowLeft size={17} />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => revealNextHint()}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber/15 px-3 py-2.5 text-sm font-bold text-amber-dark"
-                  >
-                    <Lightbulb size={17} /> רמז
-                  </button>
+                  {isHintQuestion ? (
+                    <button
+                      type="button"
+                      onClick={() => revealNextHint()}
+                      disabled={gamePhase !== 'playing'}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber/15 px-3 py-2.5 text-sm font-bold text-amber-dark disabled:opacity-35"
+                    >
+                      <Lightbulb size={17} /> רמז
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={togglePause}
@@ -408,20 +408,26 @@ export default function LiveGame() {
                     )}
                     {gamePhase === 'paused' ? 'המשך' : 'השהיה'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleMarkCorrect}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal/10 px-3 py-2.5 text-sm font-bold text-teal"
-                  >
-                    <Check size={17} /> נכון
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleMarkWrong}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-coral/10 px-3 py-2.5 text-sm font-bold text-coral"
-                  >
-                    <X size={17} /> שגוי
-                  </button>
+                  {isOpenAnswerQuestion ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleMarkCorrect}
+                        disabled={gamePhase !== 'playing'}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal/10 px-3 py-2.5 text-sm font-bold text-teal disabled:opacity-35"
+                      >
+                        <Check size={17} /> נכון
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleMarkWrong}
+                        disabled={gamePhase !== 'playing'}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-coral/10 px-3 py-2.5 text-sm font-bold text-coral disabled:opacity-35"
+                      >
+                        <X size={17} /> שגוי
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
               <button
@@ -465,15 +471,21 @@ export default function LiveGame() {
           <span>
             <kbd>Space</kbd> השהיה
           </span>
-          <span>
-            <kbd>H / י</kbd> רמז
-          </span>
-          <span>
-            <kbd>כ / F / V</kbd> נכון
-          </span>
-          <span>
-            <kbd>ל / K / L</kbd> שגוי
-          </span>
+          {isHintQuestion ? (
+            <span>
+              <kbd>H / י</kbd> רמז
+            </span>
+          ) : null}
+          {isOpenAnswerQuestion ? (
+            <>
+              <span>
+                <kbd>כ / F / V</kbd> נכון
+              </span>
+              <span>
+                <kbd>ל / K / L</kbd> שגוי
+              </span>
+            </>
+          ) : null}
           <span>
             <kbd>Esc</kbd> יציאה
           </span>

@@ -5,6 +5,10 @@ import type {
   GameResultWithContestants,
   QuestionWithRelations,
 } from '../types';
+import {
+  calculatePotentialPoints,
+  getRevealableHints,
+} from '../utils/liveQuestion';
 
 export type GamePhase =
   'idle' | 'opening' | 'playing' | 'showing_answer' | 'paused' | 'finished';
@@ -300,22 +304,22 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     if (
       state.gamePhase !== 'playing' ||
       state.currentContestantId === null ||
-      !question
+      !question ||
+      (question.question_type !== 'complete_sentence' &&
+        question.question_type !== 'association_hints')
     ) {
       return state.potentialPointsForCurrentQuestion;
     }
+    const revealableHints = getRevealableHints(question);
     const nextHintCount = Math.min(
       state.revealedHintsForCurrentQuestion + 1,
-      question.hints.length,
+      revealableHints.length,
     );
     if (nextHintCount === state.revealedHintsForCurrentQuestion) {
       return state.potentialPointsForCurrentQuestion;
     }
 
-    const penalty = question.hints
-      .slice(0, nextHintCount)
-      .reduce((total, hint) => total + hint.points_penalty, 0);
-    const potentialPoints = Math.max(0, question.points - penalty);
+    const potentialPoints = calculatePotentialPoints(question, nextHintCount);
     const stats = new Map(state.statsByContestant);
     const currentStats = stats.get(state.currentContestantId) ?? {
       correct: 0,

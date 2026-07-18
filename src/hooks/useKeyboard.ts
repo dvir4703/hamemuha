@@ -4,6 +4,8 @@ import { useLiveStore } from '../store/liveStore';
 
 interface UseKeyboardOptions {
   enabled: boolean;
+  hintEnabled?: boolean;
+  judgementEnabled?: boolean;
   onExitRequest: () => void;
   onMarkCorrect: () => void;
   onMarkWrong: () => void;
@@ -24,6 +26,8 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export function useKeyboard({
   enabled,
+  hintEnabled = true,
+  judgementEnabled = true,
   onExitRequest,
   onMarkCorrect,
   onMarkWrong,
@@ -76,17 +80,23 @@ export function useKeyboard({
           return;
       }
 
-      if (normalizedKey === 'h' || event.key === 'י') {
+      if (hintEnabled && (normalizedKey === 'h' || event.key === 'י')) {
         event.preventDefault();
         revealNextHint();
         return;
       }
-      if (CORRECT_KEYS.has(normalizedKey) || CORRECT_KEYS.has(event.key)) {
+      if (
+        judgementEnabled &&
+        (CORRECT_KEYS.has(normalizedKey) || CORRECT_KEYS.has(event.key))
+      ) {
         event.preventDefault();
         onMarkCorrect();
         return;
       }
-      if (WRONG_KEYS.has(normalizedKey) || WRONG_KEYS.has(event.key)) {
+      if (
+        judgementEnabled &&
+        (WRONG_KEYS.has(normalizedKey) || WRONG_KEYS.has(event.key))
+      ) {
         event.preventDefault();
         onMarkWrong();
       }
@@ -96,6 +106,8 @@ export function useKeyboard({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     enabled,
+    hintEnabled,
+    judgementEnabled,
     jumpToContestant,
     nextQuestion,
     onExitRequest,
