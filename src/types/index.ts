@@ -89,6 +89,29 @@ export interface QuestionWithRelations extends Question {
   hints: Hint[];
 }
 
+export interface QuestionSummaryWithRelations extends QuestionSummary {
+  answers: Answer[];
+  hints: Hint[];
+}
+
+export interface ContestantGameResultInput {
+  contestantId: number;
+  totalScore: number;
+  correctCount: number;
+  wrongCount: number;
+  hintsUsed: number;
+}
+
+export interface SaveGameResultInput {
+  quizId: number;
+  totalTime: number;
+  contestantResults: ContestantGameResultInput[];
+}
+
+export interface GameResultWithContestants extends GameResult {
+  contestantResults: ContestantResult[];
+}
+
 export interface QuizMutationInput {
   name: string;
   logoPath?: string | null;
@@ -155,7 +178,7 @@ export interface ElectronApi {
     delete: (id: number) => Promise<boolean>;
   };
   question: {
-    getByQuizId: (quizId: number) => Promise<QuestionSummary[]>;
+    getByQuizId: (quizId: number) => Promise<QuestionSummaryWithRelations[]>;
     getById: (id: number) => Promise<QuestionWithRelations | null>;
     create: (data: QuestionMutationInput) => Promise<QuestionWithRelations>;
     update: (
@@ -165,6 +188,12 @@ export interface ElectronApi {
     delete: (id: number) => Promise<boolean>;
     reorder: (contestantId: number, orderedIds: number[]) => Promise<boolean>;
     duplicate: (id: number) => Promise<QuestionWithRelations>;
+  };
+  result: {
+    saveGameResult: (
+      data: SaveGameResultInput,
+    ) => Promise<GameResultWithContestants>;
+    getById: (id: number) => Promise<GameResultWithContestants | null>;
   };
   file: {
     selectAndSaveImage: (category: string) => Promise<string | null>;

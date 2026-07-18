@@ -29,6 +29,10 @@ const api: ElectronApi = {
       ipcRenderer.invoke('question:reorder', contestantId, orderedIds),
     duplicate: (id) => ipcRenderer.invoke('question:duplicate', id),
   },
+  result: {
+    saveGameResult: (data) => ipcRenderer.invoke('result:saveGameResult', data),
+    getById: (id) => ipcRenderer.invoke('result:getById', id),
+  },
   file: {
     selectAndSaveImage: (category) =>
       ipcRenderer.invoke('file:selectAndSaveImage', category),

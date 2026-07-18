@@ -21,6 +21,7 @@ import {
   FileQuestion,
   LoaderCircle,
   Pencil,
+  Play,
   Plus,
   Save,
   Trash2,
@@ -423,16 +424,26 @@ export default function QuizEditor() {
               ניהול שאלות ומתמודדים
             </p>
           </div>
-          {selectedContestant ? (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={openNewQuestion}
-              className="inline-flex items-center gap-2 rounded-2xl bg-teal px-5 py-3 font-bold text-white shadow-button hover:bg-teal-dark"
+              onClick={() => navigate(`/quiz/${quizId}/live`)}
+              className="inline-flex items-center gap-2 rounded-2xl bg-amber px-4 py-3 font-bold text-ink shadow-sm hover:bg-yellow-400"
             >
-              <Plus size={20} aria-hidden="true" />
-              שאלה חדשה
+              <Play size={19} fill="currentColor" aria-hidden="true" />
+              הפעל
             </button>
-          ) : null}
+            {selectedContestant ? (
+              <button
+                type="button"
+                onClick={openNewQuestion}
+                className="inline-flex items-center gap-2 rounded-2xl bg-teal px-5 py-3 font-bold text-white shadow-button hover:bg-teal-dark"
+              >
+                <Plus size={20} aria-hidden="true" />
+                שאלה חדשה
+              </button>
+            ) : null}
+          </div>
         </div>
       </header>
 

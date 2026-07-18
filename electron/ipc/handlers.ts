@@ -24,6 +24,7 @@ import {
   reorderQuestions,
   updateQuestion,
 } from '../database/dal/questions';
+import { getGameResultById, saveGameResult } from '../database/dal/results';
 import { getImageUrl, saveImage } from '../services/file.service';
 
 function requirePositiveId(id: number): number {
@@ -84,6 +85,13 @@ export function registerIpcHandlers(): void {
   );
   ipcMain.handle('question:duplicate', (_event, id: number) =>
     duplicateQuestion(requirePositiveId(id)),
+  );
+
+  ipcMain.handle('result:saveGameResult', (_event, data) =>
+    saveGameResult(data),
+  );
+  ipcMain.handle('result:getById', (_event, id: number) =>
+    getGameResultById(requirePositiveId(id)),
   );
 
   ipcMain.handle(

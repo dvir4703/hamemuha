@@ -20,6 +20,23 @@ export function getHintsByQuestionId(
     .all(questionId) as Hint[];
 }
 
+export function getHintsByQuizId(
+  database: Database.Database,
+  quizId: number,
+): Hint[] {
+  return database
+    .prepare(
+      `
+        SELECT hints.*
+        FROM hints
+        INNER JOIN questions ON questions.id = hints.question_id
+        WHERE questions.quiz_id = ?
+        ORDER BY hints.question_id, hints.hint_order, hints.id
+      `,
+    )
+    .all(quizId) as Hint[];
+}
+
 export function replaceHints(
   database: Database.Database,
   questionId: number,

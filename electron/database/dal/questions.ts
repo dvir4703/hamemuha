@@ -5,12 +5,16 @@ import type {
   HintInput,
   Question,
   QuestionMutationInput,
-  QuestionSummary,
+  QuestionSummaryWithRelations,
   QuestionWithRelations,
 } from '../../../src/types';
 import { getDatabase } from '../connection';
-import { getAnswersByQuestionId, replaceAnswers } from './answers';
-import { getHintsByQuestionId, replaceHints } from './hints';
+import {
+  getAnswersByQuestionId,
+  getAnswersByQuizId,
+  replaceAnswers,
+} from './answers';
+import { getHintsByQuestionId, getHintsByQuizId, replaceHints } from './hints';
 
 export type QuestionRecord = Question;
 export type CreateQuestionInput = QuestionMutationInput;
@@ -194,8 +198,11 @@ function insertQuestion(
   return questionId;
 }
 
-export function getQuestionsByQuizId(quizId: number): QuestionSummary[] {
-  const rows = getDatabase()
+export function getQuestionsByQuizId(
+  quizId: number,
+): QuestionSummaryWithRelations[] {
+  const database = getDatabase();
+  const rows = database
     .prepare(
       `
         SELECT
@@ -211,7 +218,32 @@ export function getQuestionsByQuizId(quizId: number): QuestionSummary[] {
     )
     .all(quizId) as QuestionSummaryRow[];
 
-  return rows.map(mapQuestion) as QuestionSummary[];
+  const answersByQuestion = new Map<
+    number,
+    QuestionSummaryWithRelations['answers']
+  >();
+  const hintsByQuestion = new Map<
+    number,
+    QuestionSummaryWithRelations['hints']
+  >();
+
+  for (const answer of getAnswersByQuizId(database, quizId)) {
+    const questionAnswers = answersByQuestion.get(answer.question_id) ?? [];
+    questionAnswers.push(answer);
+    answersByQuestion.set(answer.question_id, questionAnswers);
+  }
+
+  for (const hint of getHintsByQuizId(database, quizId)) {
+    const questionHints = hintsByQuestion.get(hint.question_id) ?? [];
+    questionHints.push(hint);
+    hintsByQuestion.set(hint.question_id, questionHints);
+  }
+
+  return rows.map((row) => ({
+    ...mapQuestion(row),
+    answers: answersByQuestion.get(row.id) ?? [],
+    hints: hintsByQuestion.get(row.id) ?? [],
+  }));
 }
 
 export function getQuestionById(id: number): QuestionWithRelations | null {

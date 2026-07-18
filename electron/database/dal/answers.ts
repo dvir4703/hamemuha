@@ -28,6 +28,25 @@ export function getAnswersByQuestionId(
   return rows.map(mapAnswer);
 }
 
+export function getAnswersByQuizId(
+  database: Database.Database,
+  quizId: number,
+): Answer[] {
+  const rows = database
+    .prepare(
+      `
+        SELECT answers.*
+        FROM answers
+        INNER JOIN questions ON questions.id = answers.question_id
+        WHERE questions.quiz_id = ?
+        ORDER BY answers.question_id, answers.display_order, answers.id
+      `,
+    )
+    .all(quizId) as AnswerRow[];
+
+  return rows.map(mapAnswer);
+}
+
 export function replaceAnswers(
   database: Database.Database,
   questionId: number,
