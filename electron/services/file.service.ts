@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { extname, isAbsolute, join, normalize, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -103,4 +104,12 @@ export function getImageUrl(relativePath: string): string {
     .join('/');
 
   return `${IMAGE_SCHEME}://local/${encodedPath}`;
+}
+
+export async function getImageDataUrl(relativePath: string): Promise<string> {
+  const absolutePath = resolveImagePath(relativePath);
+  const extension = extname(absolutePath).toLowerCase();
+  const mimeType = extension === '.png' ? 'image/png' : 'image/jpeg';
+  const image = await readFile(absolutePath);
+  return `data:${mimeType};base64,${image.toString('base64')}`;
 }

@@ -1,4 +1,4 @@
-import { dialog, ipcMain } from 'electron';
+import { BrowserWindow, dialog, ipcMain } from 'electron';
 
 import {
   createContestant,
@@ -25,7 +25,12 @@ import {
   updateQuestion,
 } from '../database/dal/questions';
 import { getGameResultById, saveGameResult } from '../database/dal/results';
-import { getImageUrl, saveImage } from '../services/file.service';
+import { saveScoreboardImage } from '../services/export.service';
+import {
+  getImageDataUrl,
+  getImageUrl,
+  saveImage,
+} from '../services/file.service';
 
 function requirePositiveId(id: number): number {
   if (!Number.isInteger(id) || id <= 0) {
@@ -94,6 +99,10 @@ export function registerIpcHandlers(): void {
     getGameResultById(requirePositiveId(id)),
   );
 
+  ipcMain.handle('export:saveScoreboardImage', (event, data) =>
+    saveScoreboardImage(data, BrowserWindow.fromWebContents(event.sender)),
+  );
+
   ipcMain.handle(
     'file:selectAndSaveImage',
     async (_event, category: string) => {
@@ -117,5 +126,8 @@ export function registerIpcHandlers(): void {
   );
   ipcMain.handle('file:getImageUrl', (_event, relativePath: string) =>
     getImageUrl(relativePath),
+  );
+  ipcMain.handle('file:getImageDataUrl', (_event, relativePath: string) =>
+    getImageDataUrl(relativePath),
   );
 }

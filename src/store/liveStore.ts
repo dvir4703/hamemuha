@@ -4,6 +4,7 @@ import type {
   Contestant,
   GameResultWithContestants,
   QuestionWithRelations,
+  Quiz,
 } from '../types';
 import {
   calculatePotentialPoints,
@@ -19,10 +20,18 @@ export interface ContestantLiveStats {
   hintsUsed: number;
 }
 
+export interface LastAnswerResult {
+  submissionId: number;
+  questionId: number;
+  isCorrect: boolean;
+  pointsAwarded: number;
+}
+
 type ResumableGamePhase = 'playing' | 'showing_answer';
 
 export interface LiveStoreState {
   quizId: number | null;
+  quiz: Quiz | null;
   contestants: Contestant[];
   questionsByContestant: Map<number, QuestionWithRelations[]>;
   currentContestantId: number | null;
@@ -33,6 +42,7 @@ export interface LiveStoreState {
   gameStartTime: number | null;
   revealedHintsForCurrentQuestion: number;
   potentialPointsForCurrentQuestion: number;
+  lastAnswerResult: LastAnswerResult | null;
   previousGamePhase: ResumableGamePhase | null;
   totalTime: number | null;
   isLoading: boolean;
@@ -53,6 +63,7 @@ export interface LiveStoreState {
 
 interface ResettableLiveState {
   quizId: number | null;
+  quiz: Quiz | null;
   contestants: Contestant[];
   questionsByContestant: Map<number, QuestionWithRelations[]>;
   currentContestantId: number | null;
@@ -63,6 +74,7 @@ interface ResettableLiveState {
   gameStartTime: number | null;
   revealedHintsForCurrentQuestion: number;
   potentialPointsForCurrentQuestion: number;
+  lastAnswerResult: LastAnswerResult | null;
   previousGamePhase: ResumableGamePhase | null;
   totalTime: number | null;
   isLoading: boolean;
@@ -73,6 +85,7 @@ interface ResettableLiveState {
 function createIdleState(): ResettableLiveState {
   return {
     quizId: null,
+    quiz: null,
     contestants: [],
     questionsByContestant: new Map(),
     currentContestantId: null,
@@ -83,6 +96,7 @@ function createIdleState(): ResettableLiveState {
     gameStartTime: null,
     revealedHintsForCurrentQuestion: 0,
     potentialPointsForCurrentQuestion: 0,
+    lastAnswerResult: null,
     previousGamePhase: null,
     totalTime: null,
     isLoading: false,
@@ -120,7 +134,23 @@ function basePointsForContestant(
   return questionsByContestant.get(contestantId)?.[index]?.points ?? 0;
 }
 
+function haveAllContestantsFinished(
+  contestants: Contestant[],
+  questionsByContestant: Map<number, QuestionWithRelations[]>,
+  indexes: Map<number, number>,
+): boolean {
+  return (
+    contestants.length > 0 &&
+    contestants.every((contestant) => {
+      const questions = questionsByContestant.get(contestant.id) ?? [];
+      const currentIndex = indexes.get(contestant.id) ?? 0;
+      return currentIndex >= questions.length;
+    })
+  );
+}
+
 let latestLoadRequest = 0;
+let nextSubmissionId = 0;
 
 export const useLiveStore = create<LiveStoreState>((set, get) => ({
   ...createIdleState(),
@@ -136,10 +166,12 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     set({ ...createIdleState(), isLoading: true, quizId });
 
     try {
-      const [loadedContestants, loadedQuestions] = await Promise.all([
-        window.api.contestant.getByQuizId(quizId),
-        window.api.question.getByQuizId(quizId),
-      ]);
+      const [loadedQuiz, loadedContestants, loadedQuestions] =
+        await Promise.all([
+          window.api.quiz.getById(quizId),
+          window.api.contestant.getByQuizId(quizId),
+          window.api.question.getByQuizId(quizId),
+        ]);
       if (requestId !== latestLoadRequest) return;
       const contestants = [...loadedContestants].sort(
         (a, b) => a.display_order - b.display_order || a.id - b.id,
@@ -175,6 +207,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       const currentContestantId = contestants[0]?.id ?? null;
       set({
         quizId,
+        quiz: loadedQuiz,
         contestants,
         questionsByContestant,
         currentContestantId,
@@ -192,6 +225,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
                 indexes,
                 currentContestantId,
               ),
+        lastAnswerResult: null,
         previousGamePhase: null,
         totalTime: null,
         isLoading: false,
@@ -209,11 +243,22 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
   startGame: () => {
     const state = get();
     if (state.gamePhase !== 'opening') return;
+    const shouldEndImmediately = haveAllContestantsFinished(
+      state.contestants,
+      state.questionsByContestant,
+      state.currentQuestionIndexByContestant,
+    );
     set({
       gamePhase: 'playing',
       gameStartTime: state.gameStartTime ?? Date.now(),
+      lastAnswerResult: null,
       previousGamePhase: null,
     });
+    if (shouldEndImmediately) {
+      void get()
+        .endGame()
+        .catch(() => undefined);
+    }
   },
 
   jumpToContestant: (displayOrder) => {
@@ -234,6 +279,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     set({
       currentContestantId: contestant.id,
       gamePhase: nextPhase,
+      lastAnswerResult: null,
       revealedHintsForCurrentQuestion: isChangingContestant
         ? 0
         : state.revealedHintsForCurrentQuestion,
@@ -265,13 +311,24 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     const nextIndex = Math.min(currentIndex + 1, questions.length);
     const indexes = new Map(state.currentQuestionIndexByContestant);
     indexes.set(contestantId, nextIndex);
+    const shouldEndGame = haveAllContestantsFinished(
+      state.contestants,
+      state.questionsByContestant,
+      indexes,
+    );
     set({
       currentQuestionIndexByContestant: indexes,
       revealedHintsForCurrentQuestion: 0,
       potentialPointsForCurrentQuestion: questions[nextIndex]?.points ?? 0,
       gamePhase: 'playing',
+      lastAnswerResult: null,
       previousGamePhase: null,
     });
+    if (shouldEndGame) {
+      void get()
+        .endGame()
+        .catch(() => undefined);
+    }
   },
 
   previousQuestion: () => {
@@ -294,6 +351,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       revealedHintsForCurrentQuestion: 0,
       potentialPointsForCurrentQuestion: questions[previousIndex]?.points ?? 0,
       gamePhase: 'playing',
+      lastAnswerResult: null,
       previousGamePhase: null,
     });
   },
@@ -340,10 +398,11 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
 
   submitAnswer: (isCorrect, pointsAwarded) => {
     const state = get();
+    const question = getCurrentQuestion(state);
     if (
       state.gamePhase !== 'playing' ||
       state.currentContestantId === null ||
-      !getCurrentQuestion(state)
+      !question
     ) {
       return;
     }
@@ -351,11 +410,9 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     const normalizedPoints = Number.isFinite(pointsAwarded)
       ? Math.max(0, Math.trunc(pointsAwarded))
       : 0;
+    const awardedPoints = isCorrect ? normalizedPoints : 0;
     const scores = new Map(state.scoresByContestant);
-    scores.set(
-      contestantId,
-      (scores.get(contestantId) ?? 0) + normalizedPoints,
-    );
+    scores.set(contestantId, (scores.get(contestantId) ?? 0) + awardedPoints);
     const stats = new Map(state.statsByContestant);
     const currentStats = stats.get(contestantId) ?? {
       correct: 0,
@@ -371,6 +428,12 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       scoresByContestant: scores,
       statsByContestant: stats,
       gamePhase: 'showing_answer',
+      lastAnswerResult: {
+        submissionId: ++nextSubmissionId,
+        questionId: question.id,
+        isCorrect,
+        pointsAwarded: awardedPoints,
+      },
       previousGamePhase: null,
     });
   },

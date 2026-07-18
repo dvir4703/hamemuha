@@ -33,11 +33,17 @@ const api: ElectronApi = {
     saveGameResult: (data) => ipcRenderer.invoke('result:saveGameResult', data),
     getById: (id) => ipcRenderer.invoke('result:getById', id),
   },
+  export: {
+    saveScoreboardImage: (data) =>
+      ipcRenderer.invoke('export:saveScoreboardImage', data),
+  },
   file: {
     selectAndSaveImage: (category) =>
       ipcRenderer.invoke('file:selectAndSaveImage', category),
     getImageUrl: (relativePath) =>
       ipcRenderer.invoke('file:getImageUrl', relativePath),
+    getImageDataUrl: (relativePath) =>
+      ipcRenderer.invoke('file:getImageDataUrl', relativePath),
   },
   system: {
     platform: process.platform,

@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Clock3,
   Flag,
   Lightbulb,
   LoaderCircle,
@@ -12,25 +11,34 @@ import {
   Play,
   X,
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import { AnswerFeedbackScreen } from '../../components/live/AnswerFeedback/AnswerFeedbackScreen';
+import { KeyboardCheatSheet } from '../../components/live/KeyboardCheatSheet';
+import { LiveConfirmationDialog } from '../../components/live/LiveConfirmationDialog';
 import { LiveQuestionRenderer } from '../../components/live/LiveQuestionRenderer';
 import { useKeyboard } from '../../hooks/useKeyboard';
 import { selectCurrentQuestion, useLiveStore } from '../../store/liveStore';
+import { OpeningScreen } from './OpeningScreen';
+import { ScoreboardScreen } from './ScoreboardScreen';
 
 const phaseLabels = {
-  idle: 'idle · לא נטען',
-  opening: 'opening · ממתין להתחלה',
-  playing: 'playing · שאלה פעילה',
-  showing_answer: 'showing_answer · מציג תשובה',
-  paused: 'paused · המשחק מושהה',
-  finished: 'finished · המשחק הסתיים',
+  idle: 'לא נטען',
+  opening: 'ממתינים להתחלה',
+  playing: 'שאלה פעילה',
+  showing_answer: 'מציגים תשובה',
+  paused: 'המשחק מושהה',
+  finished: 'המשחק הסתיים',
 } as const;
+
+type PendingConfirmation = 'exit' | 'finish' | null;
 
 export default function LiveGame() {
   const navigate = useNavigate();
   const { id: quizIdParam } = useParams();
   const quizId = Number(quizIdParam);
+  const quiz = useLiveStore((state) => state.quiz);
   const contestants = useLiveStore((state) => state.contestants);
   const questionsByContestant = useLiveStore(
     (state) => state.questionsByContestant,
@@ -51,7 +59,8 @@ export default function LiveGame() {
   const potentialPoints = useLiveStore(
     (state) => state.potentialPointsForCurrentQuestion,
   );
-  const totalTime = useLiveStore((state) => state.totalTime);
+  const lastAnswerResult = useLiveStore((state) => state.lastAnswerResult);
+  const previousGamePhase = useLiveStore((state) => state.previousGamePhase);
   const isLoading = useLiveStore((state) => state.isLoading);
   const isEnding = useLiveStore((state) => state.isEnding);
   const error = useLiveStore((state) => state.error);
@@ -66,11 +75,19 @@ export default function LiveGame() {
   const endGame = useLiveStore((state) => state.endGame);
   const resetGame = useLiveStore((state) => state.resetGame);
   const clearError = useLiveStore((state) => state.clearError);
-  const [exitRequested, setExitRequested] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] =
+    useState<PendingConfirmation>(null);
+  const [cheatSheetOpen, setCheatSheetOpen] = useState(false);
   const isHintQuestion =
     currentQuestion?.question_type === 'complete_sentence' ||
     currentQuestion?.question_type === 'association_hints';
   const isOpenAnswerQuestion = currentQuestion?.question_type === 'open_answer';
+  const isShowingFeedback = Boolean(
+    currentQuestion &&
+    lastAnswerResult?.questionId === currentQuestion.id &&
+    (gamePhase === 'showing_answer' ||
+      (gamePhase === 'paused' && previousGamePhase === 'showing_answer')),
+  );
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -91,11 +108,32 @@ export default function LiveGame() {
     submitAnswer(false, 0);
   }, [gamePhase, isOpenAnswerQuestion, submitAnswer]);
   const handleExitRequest = useCallback(() => {
-    setExitRequested(true);
+    setPendingConfirmation('exit');
   }, []);
+  const handleCancelConfirmation = useCallback(() => {
+    setPendingConfirmation(null);
+  }, []);
+  const handleConfirmExit = useCallback(() => {
+    setPendingConfirmation(null);
+    resetGame();
+    navigate('/');
+  }, [navigate, resetGame]);
+  const handleConfirmFinish = useCallback(() => {
+    setPendingConfirmation(null);
+    void endGame().catch(() => undefined);
+  }, [endGame]);
+  const handleReturnHome = useCallback(() => {
+    resetGame();
+    navigate('/');
+  }, [navigate, resetGame]);
 
   useKeyboard({
-    enabled: !isLoading && !exitRequested,
+    enabled:
+      !isLoading &&
+      pendingConfirmation === null &&
+      !cheatSheetOpen &&
+      gamePhase !== 'opening' &&
+      gamePhase !== 'finished',
     hintEnabled: gamePhase === 'playing' && isHintQuestion,
     judgementEnabled: gamePhase === 'playing' && isOpenAnswerQuestion,
     onExitRequest: handleExitRequest,
@@ -132,25 +170,55 @@ export default function LiveGame() {
     );
   }
 
+  if (gamePhase === 'opening') {
+    return (
+      <>
+        <OpeningScreen
+          quiz={quiz}
+          canStart={contestants.length > 0}
+          enabled={!cheatSheetOpen}
+          onStart={startGame}
+        />
+        <KeyboardCheatSheet
+          open={cheatSheetOpen}
+          onOpenChange={setCheatSheetOpen}
+        />
+      </>
+    );
+  }
+
+  if (gamePhase === 'finished') {
+    return (
+      <ScoreboardScreen
+        quiz={quiz}
+        contestants={contestants}
+        scoresByContestant={scores}
+        statsByContestant={stats}
+        isSavingResults={isEnding}
+        onReturnHome={handleReturnHome}
+      />
+    );
+  }
+
   return (
     <div className="app-shell min-h-screen bg-canvas px-6 py-6 text-ink lg:px-10">
       <main className="mx-auto max-w-[1480px]">
         <header className="flex flex-col gap-4 rounded-[26px] bg-ink px-6 py-5 text-white shadow-hero sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-bold tracking-wide text-mint">
-              מצב לייב · מסכי שאלות
+              מצב לייב · {quiz?.name ?? 'החידון והחוויה'}
             </p>
             <h1 className="mt-1 font-display text-2xl font-black">
-              מנוע הניווט
+              החידון והחוויה
             </h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-xl bg-white/10 px-3 py-2 font-mono text-xs text-white/70">
+            <span className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white/70">
               {phaseLabels[gamePhase]}
             </span>
             <button
               type="button"
-              onClick={() => setExitRequested(true)}
+              onClick={() => setPendingConfirmation('exit')}
               className="rounded-xl px-3 py-2 text-sm font-bold text-white/65 hover:bg-white/10 hover:text-white"
             >
               יציאה
@@ -175,37 +243,6 @@ export default function LiveGame() {
               <X size={18} />
             </button>
           </div>
-        ) : null}
-
-        {exitRequested ? (
-          <section
-            className="mt-5 flex flex-col gap-3 rounded-2xl border border-amber/30 bg-amber/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-            aria-live="polite"
-          >
-            <div>
-              <strong className="block">התקבלה בקשת יציאה</strong>
-              <span className="text-sm text-ink/55">
-                זהו placeholder עד לדיאלוג האישור של שלב 3ב. קיצורי המקלדת
-                כבויים כרגע.
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setExitRequested(false)}
-                className="rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-ink shadow-sm"
-              >
-                המשך בדיקה
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate(`/quizzes/${quizId}/edit`)}
-                className="rounded-xl bg-ink px-4 py-2.5 text-sm font-bold text-white"
-              >
-                יציאה עכשיו
-              </button>
-            </div>
-          </section>
         ) : null}
 
         <section
@@ -313,10 +350,36 @@ export default function LiveGame() {
                 ) : (
                   <div className="py-8">
                     {currentQuestion ? (
-                      <LiveQuestionRenderer
-                        question={currentQuestion}
-                        revealedHints={revealedHints}
-                      />
+                      <AnimatePresence mode="sync" initial={false}>
+                        <motion.div
+                          key={
+                            isShowingFeedback
+                              ? `feedback-${lastAnswerResult?.submissionId}`
+                              : `question-${currentQuestion.id}`
+                          }
+                          initial={{ opacity: 0, y: 14, scale: 0.99 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -10, scale: 0.99 }}
+                          transition={{ duration: 0.24, ease: 'easeOut' }}
+                        >
+                          {isShowingFeedback && lastAnswerResult ? (
+                            <AnswerFeedbackScreen
+                              question={currentQuestion}
+                              result={lastAnswerResult}
+                              paused={
+                                gamePhase === 'paused' ||
+                                pendingConfirmation !== null ||
+                                cheatSheetOpen
+                              }
+                            />
+                          ) : (
+                            <LiveQuestionRenderer
+                              question={currentQuestion}
+                              revealedHints={revealedHints}
+                            />
+                          )}
+                        </motion.div>
+                      </AnimatePresence>
                     ) : null}
                   </div>
                 )}
@@ -359,18 +422,8 @@ export default function LiveGame() {
             </section>
 
             <section className="rounded-[24px] border border-ink/[0.06] bg-white p-4 shadow-card">
-              <h2 className="font-display font-black">בקרי בדיקה</h2>
-              {gamePhase === 'opening' ? (
-                <button
-                  type="button"
-                  onClick={startGame}
-                  disabled={!currentContestant}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-teal px-4 py-3 font-bold text-white disabled:opacity-40"
-                >
-                  <Play size={18} /> התחלת המשחק
-                </button>
-              ) : null}
-              {gamePhase !== 'opening' && gamePhase !== 'idle' ? (
+              <h2 className="font-display font-black">בקרי משחק</h2>
+              {gamePhase !== 'idle' ? (
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -432,13 +485,8 @@ export default function LiveGame() {
               ) : null}
               <button
                 type="button"
-                onClick={() => void endGame().catch(() => undefined)}
-                disabled={
-                  gamePhase === 'opening' ||
-                  gamePhase === 'idle' ||
-                  gamePhase === 'finished' ||
-                  isEnding
-                }
+                onClick={() => setPendingConfirmation('finish')}
+                disabled={gamePhase === 'idle' || isEnding}
                 className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-ink/10 px-4 py-2.5 text-sm font-bold text-ink/55 hover:bg-canvas disabled:opacity-35"
               >
                 {isEnding ? (
@@ -446,51 +494,40 @@ export default function LiveGame() {
                 ) : (
                   <Flag size={17} />
                 )}{' '}
-                סיום ושמירת תוצאות
+                סיים משחק עכשיו
               </button>
-              {gamePhase === 'finished' ? (
-                <div className="mt-3 rounded-xl bg-teal/10 p-3 text-sm font-bold text-teal">
-                  <Clock3 className="ml-2 inline" size={16} />
-                  נשמרו {totalTime ?? 0} שניות משחק
-                </div>
-              ) : null}
             </section>
           </aside>
         </div>
-
-        <section
-          className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-dashed border-ink/15 bg-white/55 px-4 py-3 text-xs font-semibold text-ink/50"
-          aria-label="מקשי קיצור"
-        >
-          <span>
-            <kbd>1–9</kbd> קפיצה
-          </span>
-          <span>
-            <kbd>← →</kbd> ניווט
-          </span>
-          <span>
-            <kbd>Space</kbd> השהיה
-          </span>
-          {isHintQuestion ? (
-            <span>
-              <kbd>H / י</kbd> רמז
-            </span>
-          ) : null}
-          {isOpenAnswerQuestion ? (
-            <>
-              <span>
-                <kbd>כ / F / V</kbd> נכון
-              </span>
-              <span>
-                <kbd>ל / K / L</kbd> שגוי
-              </span>
-            </>
-          ) : null}
-          <span>
-            <kbd>Esc</kbd> יציאה
-          </span>
-        </section>
       </main>
+      <KeyboardCheatSheet
+        open={cheatSheetOpen}
+        questionType={currentQuestion?.question_type}
+        onOpenChange={setCheatSheetOpen}
+      />
+      <LiveConfirmationDialog
+        open={pendingConfirmation !== null}
+        title={
+          pendingConfirmation === 'finish'
+            ? 'לסיים את המשחק עכשיו?'
+            : 'לצאת מהמשחק?'
+        }
+        description={
+          pendingConfirmation === 'finish'
+            ? 'התוצאות שנצברו עד עכשיו יישמרו, ומסך הסיום יוצג מיד.'
+            : 'האם אתם בטוחים שברצונכם לצאת? התקדמות החידון תאבד.'
+        }
+        confirmLabel={
+          pendingConfirmation === 'finish' ? 'סיים והצג תוצאות' : 'יציאה מהמשחק'
+        }
+        isBusy={isEnding}
+        onConfirm={
+          pendingConfirmation === 'finish'
+            ? handleConfirmFinish
+            : handleConfirmExit
+        }
+        onCancel={handleCancelConfirmation}
+      />
     </div>
   );
 }
