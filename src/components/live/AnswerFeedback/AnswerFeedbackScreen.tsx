@@ -5,6 +5,7 @@ import { Howl } from 'howler';
 import correctSoundUrl from '../../../assets/sounds/correct.mp3?url';
 import wrongSoundUrl from '../../../assets/sounds/wrong.mp3?url';
 import { useLiveStore, type LastAnswerResult } from '../../../store/liveStore';
+import '../../../styles/live-results.css';
 import type { QuestionWithRelations } from '../../../types';
 import { CorrectAnswerScreen } from './CorrectAnswerScreen';
 import { WrongAnswerScreen } from './WrongAnswerScreen';
@@ -34,7 +35,7 @@ export function AnswerFeedbackScreen({
 
   useEffect(() => {
     let sound: Howl | null = null;
-    let secondConfettiTimer: number | undefined;
+    const confettiTimers: number[] = [];
 
     const activationTimer = window.setTimeout(() => {
       if (handledSubmissions.has(result.submissionId)) return;
@@ -53,29 +54,88 @@ export function AnswerFeedbackScreen({
         result.isCorrect &&
         !window.matchMedia('(prefers-reduced-motion: reduce)').matches
       ) {
-        const colors = ['#9fe1d4', '#f2b84b', '#7771c7', '#287d78'];
+        const colors = ['#f4b942', '#ffe08a', '#f6f7ff', '#1b1c4d'];
         fireConfetti({
-          particleCount: 46,
-          spread: 62,
-          startVelocity: 28,
-          gravity: 0.85,
-          scalar: 0.86,
-          origin: { x: 0.5, y: 0.38 },
+          particleCount: 88,
+          spread: 96,
+          startVelocity: 38,
+          gravity: 0.82,
+          scalar: 0.92,
+          origin: { x: 0.5, y: 0.28 },
           colors,
           disableForReducedMotion: true,
         });
-        secondConfettiTimer = window.setTimeout(() => {
-          fireConfetti({
-            particleCount: 28,
-            spread: 78,
-            startVelocity: 22,
-            gravity: 0.9,
-            scalar: 0.78,
-            origin: { x: 0.5, y: 0.34 },
-            colors,
-            disableForReducedMotion: true,
-          });
-        }, 420);
+
+        confettiTimers.push(
+          window.setTimeout(() => {
+            fireConfetti({
+              particleCount: 54,
+              angle: 58,
+              spread: 62,
+              startVelocity: 52,
+              gravity: 0.88,
+              scalar: 0.9,
+              origin: { x: 0.04, y: 0.7 },
+              colors,
+              disableForReducedMotion: true,
+            });
+            fireConfetti({
+              particleCount: 54,
+              angle: 122,
+              spread: 62,
+              startVelocity: 52,
+              gravity: 0.88,
+              scalar: 0.9,
+              origin: { x: 0.96, y: 0.7 },
+              colors,
+              disableForReducedMotion: true,
+            });
+          }, 230),
+        );
+
+        confettiTimers.push(
+          window.setTimeout(() => {
+            fireConfetti({
+              particleCount: 58,
+              spread: 124,
+              startVelocity: 27,
+              gravity: 0.72,
+              scalar: 0.64,
+              drift: 0.15,
+              ticks: 190,
+              origin: { x: 0.5, y: 0.2 },
+              colors,
+              disableForReducedMotion: true,
+            });
+          }, 620),
+        );
+
+        confettiTimers.push(
+          window.setTimeout(() => {
+            fireConfetti({
+              particleCount: 34,
+              spread: 74,
+              startVelocity: 20,
+              gravity: 0.68,
+              scalar: 0.52,
+              ticks: 160,
+              origin: { x: 0.28, y: 0.36 },
+              colors,
+              disableForReducedMotion: true,
+            });
+            fireConfetti({
+              particleCount: 34,
+              spread: 74,
+              startVelocity: 20,
+              gravity: 0.68,
+              scalar: 0.52,
+              ticks: 160,
+              origin: { x: 0.72, y: 0.36 },
+              colors,
+              disableForReducedMotion: true,
+            });
+          }, 920),
+        );
       }
     }, 0);
 
@@ -86,9 +146,7 @@ export function AnswerFeedbackScreen({
 
     return () => {
       window.clearTimeout(activationTimer);
-      if (secondConfettiTimer !== undefined) {
-        window.clearTimeout(secondConfettiTimer);
-      }
+      confettiTimers.forEach((timer) => window.clearTimeout(timer));
       if (autoAdvanceTimer !== undefined) {
         window.clearTimeout(autoAdvanceTimer);
       }
