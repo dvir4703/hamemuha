@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { ArrowLeft, Play, Sparkles } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Play, Sparkles } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 
 import { useImageUrl } from '../../hooks/useImageUrl';
 import type { Quiz } from '../../types';
@@ -19,6 +19,7 @@ export function OpeningScreen({
   onStart,
 }: OpeningScreenProps) {
   const logoUrl = useImageUrl(quiz?.logo_path ?? null);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!enabled || !canStart) return;
@@ -34,75 +35,141 @@ export function OpeningScreen({
   }, [canStart, enabled, onStart]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-hero px-6 py-10 text-white">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-80"
-        aria-hidden="true"
-      >
-        <div className="absolute -right-32 -top-32 h-[34rem] w-[34rem] rounded-full bg-teal/30 blur-3xl" />
-        <div className="absolute -bottom-44 -left-24 h-[38rem] w-[38rem] rounded-full bg-violet/30 blur-3xl" />
-        <div className="absolute left-[18%] top-[12%] h-40 w-40 rounded-full bg-amber/15 blur-2xl" />
+    <div className="live-opening relative min-h-screen overflow-hidden px-5 py-8 text-white sm:px-8">
+      <div className="live-opening__atmosphere" aria-hidden="true">
+        <div className="live-opening__particles" />
+        <div className="live-opening__orbit" />
       </div>
+      <div className="live-stage__beam" aria-hidden="true" />
 
-      <main className="relative mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl place-items-center text-center">
-        <motion.section
-          initial={{ opacity: 0, scale: 0.9, y: 28 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}
-          className="w-full"
-          aria-labelledby="opening-quiz-name"
-        >
-          {logoUrl ? (
-            <motion.img
-              initial={{ opacity: 0, scale: 0.82 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.16, duration: 0.46 }}
-              src={logoUrl}
-              alt={`הלוגו של ${quiz?.name ?? 'החידון'}`}
-              className="mx-auto mb-8 max-h-52 max-w-[20rem] rounded-[32px] object-contain shadow-dialog"
-            />
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, rotate: -8, scale: 0.8 }}
-              animate={{ opacity: 1, rotate: 0, scale: 1 }}
-              transition={{ delay: 0.12, type: 'spring', stiffness: 170 }}
-              className="mx-auto mb-8 grid h-28 w-28 place-items-center rounded-[34px] border border-white/15 bg-white/10 text-mint shadow-hero backdrop-blur"
-              aria-hidden="true"
-            >
-              <Sparkles size={54} />
-            </motion.div>
-          )}
-
-          <p className="text-base font-black tracking-wide text-mint">
-            החידון והחוויה מציגים
-          </p>
-          <h1
-            id="opening-quiz-name"
-            className="mx-auto mt-4 max-w-5xl font-display text-6xl font-black leading-[1.05] sm:text-7xl lg:text-8xl"
+      <main className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl place-items-center text-center">
+        <section className="w-full" aria-labelledby="opening-quiz-name">
+          <motion.div
+            initial={
+              shouldReduceMotion
+                ? false
+                : { opacity: 0, scale: 0.72, rotate: -6 }
+            }
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{
+              delay: 0.08,
+              type: 'spring',
+              stiffness: 150,
+              damping: 18,
+            }}
           >
-            {quiz?.name ?? 'החידון והחוויה'}
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-2xl font-semibold text-white/65">
-            מוכנים? מתחילים יחד, חושבים יחד וחוגגים כל תשובה.
-          </p>
+            {logoUrl ? (
+              <div className="live-opening__logo mx-auto mb-7 inline-flex max-w-[20rem] items-center justify-center rounded-[2rem] p-3 sm:mb-9">
+                <img
+                  src={logoUrl}
+                  alt={`הלוגו של ${quiz?.name ?? 'החידון'}`}
+                  className="max-h-40 max-w-full rounded-[1.35rem] object-contain sm:max-h-48"
+                />
+              </div>
+            ) : (
+              <div
+                className="live-opening__logo mx-auto mb-7 grid h-28 w-28 place-items-center rounded-full text-[#ffe08a] sm:mb-9 sm:h-32 sm:w-32"
+                aria-hidden="true"
+              >
+                <motion.div
+                  animate={
+                    shouldReduceMotion
+                      ? undefined
+                      : { rotate: [0, 5, -4, 0], scale: [1, 1.06, 1, 1] }
+                  }
+                  transition={{
+                    duration: 5,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                >
+                  <Sparkles size={58} strokeWidth={1.7} />
+                </motion.div>
+              </div>
+            )}
+          </motion.div>
+
+          <motion.p
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.28, duration: 0.4 }}
+            className="live-opening__eyebrow"
+          >
+            האורות עולים · החידון מתחיל
+          </motion.p>
+
+          <motion.div
+            initial={
+              shouldReduceMotion
+                ? false
+                : {
+                    opacity: 0,
+                    scale: 1.08,
+                    filter: 'blur(16px)',
+                    clipPath: 'inset(42% 0 42% 0)',
+                  }
+            }
+            animate={{
+              opacity: 1,
+              scale: 1,
+              filter: 'blur(0px)',
+              clipPath: 'inset(0% 0 0% 0)',
+            }}
+            transition={{
+              delay: 0.34,
+              duration: shouldReduceMotion ? 0.1 : 0.82,
+              ease: [0.16, 0.84, 0.22, 1],
+            }}
+          >
+            <h1
+              id="opening-quiz-name"
+              className="live-opening__title mx-auto max-w-6xl font-display text-[clamp(3.75rem,9vw,8.5rem)] font-black leading-[0.95]"
+            >
+              {quiz?.name ?? 'החידון והחוויה'}
+            </h1>
+            <span
+              className="live-opening__title-accent mt-7 sm:mt-9"
+              aria-hidden="true"
+            />
+          </motion.div>
+
+          <motion.p
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.84, duration: 0.42 }}
+            className="mx-auto mt-6 max-w-2xl text-xl font-semibold text-white/58 sm:text-2xl"
+          >
+            הבמה מוכנה. מי יכבוש אותה?
+          </motion.p>
 
           <motion.button
             type="button"
             onClick={onStart}
             disabled={!canStart}
-            whileHover={canStart ? { scale: 1.025 } : undefined}
-            whileTap={canStart ? { scale: 0.98 } : undefined}
-            className="mx-auto mt-10 inline-flex min-w-80 items-center justify-center gap-4 rounded-[22px] bg-mint px-8 py-5 font-display text-2xl font-black text-ink shadow-[0_18px_45px_rgba(159,225,212,0.24)] outline-none transition focus-visible:ring-4 focus-visible:ring-white/40 disabled:cursor-not-allowed disabled:opacity-45"
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 22 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.98, duration: 0.44 }}
+            whileHover={canStart ? { scale: 1.025, y: -2 } : undefined}
+            whileTap={canStart ? { scale: 0.985 } : undefined}
+            className="live-opening__start mx-auto mt-9 inline-flex min-w-[min(24rem,88vw)] items-center justify-center gap-4 rounded-[1.4rem] px-8 py-5 font-display text-xl font-black outline-none focus-visible:ring-4 focus-visible:ring-[#ffe08a]/30 disabled:cursor-not-allowed disabled:opacity-45 sm:text-2xl"
           >
-            <Play size={26} fill="currentColor" />
-            {canStart ? 'לחצו כאן כדי להתחיל' : 'אין מתמודדים בחידון'}
+            <Play className="relative" size={25} fill="currentColor" />
+            <span className="relative">
+              {canStart ? 'לחצו Enter להתחלה' : 'אין מתמודדים בחידון'}
+            </span>
           </motion.button>
+
           {canStart ? (
-            <p className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-white/45">
-              או לחצו Enter במקלדת <ArrowLeft size={16} />
-            </p>
+            <motion.p
+              initial={shouldReduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.14, duration: 0.4 }}
+              className="mt-4 text-sm font-bold text-white/38"
+            >
+              אפשר גם ללחוץ על הכפתור
+            </motion.p>
           ) : null}
-        </motion.section>
+        </section>
       </main>
     </div>
   );
