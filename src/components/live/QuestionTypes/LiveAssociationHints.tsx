@@ -1,11 +1,13 @@
 import { Lightbulb } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import { getOrderedHints } from '../../../utils/liveQuestion';
 import { AnswerSelection } from './AnswerSelection';
+import { LiveQuestionHeader } from './LiveQuestionHeader';
 import type { LiveQuestionTypeProps } from './types';
 
 export function LiveAssociationHints(props: LiveQuestionTypeProps) {
+  const shouldReduceMotion = useReducedMotion();
   const hints = getOrderedHints(props.question);
   const visibleHints = hints.slice(
     0,
@@ -13,43 +15,55 @@ export function LiveAssociationHints(props: LiveQuestionTypeProps) {
   );
 
   return (
-    <section aria-labelledby="live-association-heading">
-      <div className="mb-7">
-        <div className="flex items-center gap-3 text-amber-dark">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-amber/20">
-            <Lightbulb size={27} />
-          </span>
-          <div>
-            <p className="text-sm font-black">אסוציאציה ורמזים</p>
-            <h3
-              id="live-association-heading"
-              className="font-display text-2xl font-black sm:text-3xl"
-            >
-              {props.question.question_text}
-            </h3>
-          </div>
-        </div>
+    <section
+      className="live-question live-question--association"
+      aria-labelledby="live-association-heading"
+    >
+      <LiveQuestionHeader
+        eyebrow="אסוציאציה ורמזים"
+        headingId="live-association-heading"
+        icon={<Lightbulb size={25} />}
+        imagePath={props.question.image_path}
+        title={props.question.question_text}
+      />
 
-        <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleHints.map((hint, index) => (
-            <motion.li
-              key={hint.id}
-              initial={index === 0 ? false : { opacity: 0, y: 18, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.28, ease: 'easeOut' }}
-              className={`relative min-h-28 rounded-[22px] border p-5 ${index === 0 ? 'border-amber/45 bg-amber/20' : 'border-violet/20 bg-violet/[0.07]'}`}
-            >
-              <span className="absolute left-4 top-4 font-mono text-xs font-bold text-ink/30">
-                רמז {index + 1}
-              </span>
-              <p className="flex min-h-16 items-center pl-16 font-display text-2xl font-black leading-snug">
-                {hint.hint_text || 'רמז ללא טקסט'}
-              </p>
-            </motion.li>
-          ))}
-        </ol>
+      <div className="live-hints-stage">
+        <AnimatePresence initial={false}>
+          <motion.ol layout className="live-hints-grid" aria-live="polite">
+            {visibleHints.map((hint, index) => (
+              <motion.li
+                layout
+                key={hint.id}
+                initial={
+                  index === 0 || shouldReduceMotion
+                    ? false
+                    : { opacity: 0, y: 24, scale: 0.95 }
+                }
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                transition={{
+                  duration: 0.36,
+                  ease: [0.22, 0.82, 0.24, 1],
+                }}
+                className="live-hint-card"
+                data-primary={index === 0}
+              >
+                <span className="live-hint-card__number">
+                  {index === 0 ? <Lightbulb size={22} /> : index + 1}
+                </span>
+                <div>
+                  <span className="live-hint-card__label">
+                    {index === 0 ? 'הרמז הראשון' : `רמז ${index + 1}`}
+                  </span>
+                  <p>{hint.hint_text || 'רמז ללא טקסט'}</p>
+                </div>
+              </motion.li>
+            ))}
+          </motion.ol>
+        </AnimatePresence>
+
         {hints.length === 0 ? (
-          <p className="mt-5 rounded-2xl bg-amber/10 p-4 font-bold text-amber-dark">
+          <p className="live-question__empty-message">
             לא הוגדרו רמזים לשאלה הזו.
           </p>
         ) : null}

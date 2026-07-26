@@ -1,8 +1,9 @@
-import { LockKeyhole } from 'lucide-react';
+import { LockKeyhole, Sparkles } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 
+import { useLiveStore } from '../../store/liveStore';
 import type { QuestionWithRelations } from '../../types';
 import { calculatePotentialPoints } from '../../utils/liveQuestion';
-import { useLiveStore } from '../../store/liveStore';
 import { LiveAssociationHints } from './QuestionTypes/LiveAssociationHints';
 import { LiveCompleteSentence } from './QuestionTypes/LiveCompleteSentence';
 import { LiveMultipleChoice } from './QuestionTypes/LiveMultipleChoice';
@@ -32,6 +33,7 @@ export function LiveQuestionRenderer({
   question,
   revealedHints,
 }: LiveQuestionRendererProps) {
+  const shouldReduceMotion = useReducedMotion();
   const gamePhase = useLiveStore((state) => state.gamePhase);
   const submitAnswer = useLiveStore((state) => state.submitAnswer);
   const QuestionComponent = questionComponents[question.question_type];
@@ -39,27 +41,37 @@ export function LiveQuestionRenderer({
   const potentialPoints = calculatePotentialPoints(question, revealedHints);
 
   return (
-    <div data-question-type={question.question_type}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-ink/[0.07] pb-4">
-        <span className="rounded-full bg-amber/15 px-4 py-2 font-display text-lg font-black text-amber-dark">
+    <motion.div
+      layout
+      transition={{
+        layout: {
+          duration: shouldReduceMotion ? 0.01 : 0.36,
+          ease: [0.22, 0.82, 0.24, 1],
+        },
+      }}
+      className="live-question-shell"
+      data-question-type={question.question_type}
+    >
+      <motion.div layout="position" className="live-question-shell__status">
+        <span className="live-question-shell__points">
+          <Sparkles size={17} aria-hidden="true" />
           {potentialPoints} נקודות
         </span>
         {gamePhase === 'showing_answer' ? (
-          <span
-            className="inline-flex items-center gap-2 rounded-full bg-teal/10 px-4 py-2 font-bold text-teal"
-            role="status"
-          >
+          <span className="live-question-shell__locked" role="status">
             <LockKeyhole size={17} /> התשובה נקלטה
           </span>
         ) : null}
-      </div>
-      <QuestionComponent
-        key={question.id}
-        question={question}
-        revealedHints={revealedHints}
-        onSubmit={submitAnswer}
-        disabled={disabled}
-      />
-    </div>
+      </motion.div>
+      <motion.div layout="position" className="live-question-shell__content">
+        <QuestionComponent
+          key={question.id}
+          question={question}
+          revealedHints={revealedHints}
+          onSubmit={submitAnswer}
+          disabled={disabled}
+        />
+      </motion.div>
+    </motion.div>
   );
 }

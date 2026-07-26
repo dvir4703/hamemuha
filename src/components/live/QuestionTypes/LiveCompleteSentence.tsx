@@ -7,11 +7,13 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { Lightbulb, TextCursorInput } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import {
   calculatePotentialPoints,
   getOrderedHints,
 } from '../../../utils/liveQuestion';
+import { LiveQuestionHeader } from './LiveQuestionHeader';
 import type { LiveQuestionTypeProps } from './types';
 
 function normalizeAnswer(value: string): string {
@@ -24,6 +26,7 @@ export function LiveCompleteSentence({
   onSubmit,
   disabled = false,
 }: LiveQuestionTypeProps) {
+  const shouldReduceMotion = useReducedMotion();
   const correctAnswer = question.correct_answer_text ?? '';
   const characters = Array.from(correctAnswer);
   const editablePositions = characters
@@ -135,22 +138,22 @@ export function LiveCompleteSentence({
   };
 
   return (
-    <section aria-labelledby="live-complete-sentence-heading">
-      <div className="text-center">
-        <TextCursorInput className="mx-auto text-teal" size={42} />
-        <p className="mt-3 text-sm font-black text-teal">השלימו את המשפט</p>
-        <h3
-          id="live-complete-sentence-heading"
-          className="mx-auto mt-2 max-w-5xl font-display text-4xl font-black leading-tight sm:text-5xl"
-        >
-          {question.question_text}
-        </h3>
-      </div>
+    <section
+      className="live-question live-question--complete-sentence"
+      aria-labelledby="live-complete-sentence-heading"
+    >
+      <LiveQuestionHeader
+        eyebrow="השלימו את המשפט"
+        headingId="live-complete-sentence-heading"
+        icon={<TextCursorInput size={25} />}
+        imagePath={question.image_path}
+        title={question.question_text}
+      />
 
       {correctAnswer ? (
-        <form onSubmit={handleSubmit} className="mt-9">
+        <form onSubmit={handleSubmit} className="live-complete-sentence__form">
           <div
-            className="flex flex-wrap justify-center gap-y-4"
+            className="live-letter-board"
             dir="rtl"
             aria-label="הקלדת התשובה אות אחר אות"
           >
@@ -159,21 +162,24 @@ export function LiveCompleteSentence({
                 return (
                   <span
                     key={`space-${position}`}
-                    className="w-7 sm:w-10"
+                    className="live-letter-board__space"
                     aria-hidden="true"
                   />
                 );
               }
               const isRevealed = revealedPositions.has(position);
+              const displayedCharacter = displayedCharacterAt(position);
               return (
-                <input
+                <motion.input
                   key={position}
                   ref={(element) => {
                     if (element) inputRefs.current.set(position, element);
                     else inputRefs.current.delete(position);
                   }}
                   data-answer-position={position}
-                  value={displayedCharacterAt(position)}
+                  data-filled={Boolean(displayedCharacter)}
+                  data-revealed={isRevealed}
+                  value={displayedCharacter}
                   onChange={(event) => updateCharacter(position, event)}
                   onKeyDown={(event) => handleCharacterKeyDown(position, event)}
                   readOnly={isRevealed}
@@ -181,43 +187,78 @@ export function LiveCompleteSentence({
                   maxLength={1}
                   autoComplete="off"
                   aria-label={`אות ${editablePositions.indexOf(position) + 1}`}
-                  className={`mx-1 h-16 w-12 rounded-2xl border-2 text-center font-display text-3xl font-black outline-none transition sm:h-20 sm:w-14 sm:text-4xl ${isRevealed ? 'border-amber bg-amber/20 text-amber-dark shadow-[inset_0_-4px_0_rgba(242,184,75,0.35)]' : 'border-ink/15 bg-white focus:border-teal focus:ring-4 focus:ring-teal/15'} disabled:opacity-75`}
+                  initial={
+                    shouldReduceMotion
+                      ? false
+                      : { opacity: 0, y: 18, scale: 0.9 }
+                  }
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    delay: shouldReduceMotion ? 0 : 0.2 + position * 0.035,
+                    duration: 0.32,
+                    ease: [0.22, 0.82, 0.24, 1],
+                  }}
+                  className="live-letter-board__tile"
                 />
               );
             })}
           </div>
 
-          {textHints.length > 0 ? (
-            <div
-              className="mx-auto mt-7 max-w-3xl space-y-2"
-              aria-live="polite"
-            >
-              {textHints.map((hint) => (
-                <div
-                  key={hint.id}
-                  className="flex items-center gap-3 rounded-2xl bg-violet/[0.08] px-5 py-3 font-bold text-violet"
-                >
-                  <Lightbulb size={20} />
-                  <span>{hint.hint_text || 'רמז ללא טקסט'}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-
-          <div className="mt-8 text-center">
-            {isComplete ? (
-              <button
-                type="submit"
-                disabled={disabled}
-                className="min-w-56 rounded-2xl bg-ink px-8 py-4 font-display text-xl font-black text-white shadow-button transition hover:bg-hero disabled:opacity-35"
-              >
-                הגשת תשובה
-              </button>
+          <AnimatePresence initial={false}>
+            {textHints.length > 0 ? (
+              <motion.div layout className="live-text-hints" aria-live="polite">
+                {textHints.map((hint, index) => (
+                  <motion.article
+                    layout
+                    key={hint.id}
+                    initial={
+                      shouldReduceMotion
+                        ? false
+                        : { opacity: 0, y: 20, scale: 0.97 }
+                    }
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                    transition={{
+                      delay: shouldReduceMotion ? 0 : index * 0.06,
+                      duration: 0.32,
+                    }}
+                    className="live-text-hint"
+                  >
+                    <span className="live-text-hint__icon" aria-hidden="true">
+                      <Lightbulb size={21} />
+                    </span>
+                    <span>{hint.hint_text || 'רמז ללא טקסט'}</span>
+                  </motion.article>
+                ))}
+              </motion.div>
             ) : null}
+          </AnimatePresence>
+
+          <div className="live-complete-sentence__footer">
+            <AnimatePresence initial={false}>
+              {isComplete ? (
+                <motion.button
+                  type="submit"
+                  disabled={disabled}
+                  initial={
+                    shouldReduceMotion
+                      ? false
+                      : { opacity: 0, y: 14, scale: 0.96 }
+                  }
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                  whileHover={disabled ? undefined : { y: -2, scale: 1.015 }}
+                  whileTap={disabled ? undefined : { scale: 0.985 }}
+                  className="live-answer-bank__submit"
+                >
+                  הגשת תשובה
+                </motion.button>
+              ) : null}
+            </AnimatePresence>
           </div>
         </form>
       ) : (
-        <p className="mx-auto mt-8 max-w-2xl rounded-2xl bg-coral/10 p-5 text-center font-bold text-coral">
+        <p className="live-question__empty-message">
           לא הוגדרה תשובה נכונה לשאלה הזו.
         </p>
       )}
