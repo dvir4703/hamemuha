@@ -20,9 +20,7 @@ export function LiveAssociationHints(props: LiveQuestionTypeProps) {
       aria-labelledby="live-association-heading"
     >
       <LiveQuestionHeader
-        eyebrow="אסוציאציה ורמזים"
         headingId="live-association-heading"
-        icon={<Lightbulb size={25} />}
         imagePath={props.question.image_path}
         title={props.question.question_text}
       />

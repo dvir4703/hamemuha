@@ -1,4 +1,3 @@
-import { ArrowRight, BookOpenCheck, Heart, Lightbulb } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 import type { QuestionWithRelations } from '../../../types';
@@ -43,14 +42,7 @@ export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
         }}
         className="live-feedback__wrong-intro"
       >
-        <span className="live-feedback__support-mark" aria-hidden="true">
-          <Heart size={38} fill="currentColor" />
-        </span>
-        <div>
-          <span className="live-feedback__wrong-eyebrow">עוד צעד בדרך</span>
-          <h3>כמעט — בואו נראה יחד</h3>
-          <p>טעות היא עוד דרך טובה להגיע לתשובה.</p>
-        </div>
+        <h3>כמעט — הנה התשובה</h3>
       </motion.div>
 
       <motion.article
@@ -68,13 +60,7 @@ export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
         className="live-feedback__answer-reveal"
       >
         <header>
-          <span className="live-feedback__answer-icon" aria-hidden="true">
-            <BookOpenCheck size={29} />
-          </span>
-          <div>
-            <span>הרגע שממנו לומדים</span>
-            <h4>התשובה שחיפשנו</h4>
-          </div>
+          <h4>התשובה הנכונה</h4>
         </header>
 
         {showOptions ? (
@@ -96,12 +82,7 @@ export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
                 data-correct={answer.is_correct}
               >
                 <span>{answer.answer_text}</span>
-                {answer.is_correct ? (
-                  <strong>
-                    <Lightbulb size={18} aria-hidden="true" />
-                    התשובה הנכונה
-                  </strong>
-                ) : null}
+                {answer.is_correct ? <strong>נכון</strong> : null}
               </motion.div>
             ))}
           </div>
@@ -134,15 +115,10 @@ export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
           }}
           className="live-feedback__wrong-explanation"
         >
-          <span>הסבר קצר</span>
+          <span>הסבר</span>
           <p>{question.explanation}</p>
         </motion.article>
       ) : null}
-
-      <p className="live-feedback__wrong-advance">
-        <ArrowRight size={17} aria-hidden="true" />
-        כשההסבר הסתיים, ממשיכים עם חץ ימינה
-      </p>
     </section>
   );
 }

@@ -158,11 +158,11 @@ export function AnswerSelection({
       </div>
 
       <div className="live-answer-bank__footer">
-        <p className="live-answer-bank__instruction">
-          {multiple
-            ? `אפשר לבחור כמה תשובות · נבחרו ${selectedIds.length}`
-            : 'יש לבחור תשובה אחת'}
-        </p>
+        {multiple ? (
+          <p className="live-answer-bank__instruction">
+            נבחרו {selectedIds.length} תשובות
+          </p>
+        ) : null}
         <AnimatePresence initial={false}>
           {selectedIds.length > 0 ? (
             <motion.button

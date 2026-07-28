@@ -6,7 +6,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react';
-import { Lightbulb, TextCursorInput } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
 import {
@@ -161,9 +161,7 @@ export function LiveCompleteSentence({
       aria-labelledby="live-complete-sentence-heading"
     >
       <LiveQuestionHeader
-        eyebrow="השלימו את המשפט"
         headingId="live-complete-sentence-heading"
-        icon={<TextCursorInput size={25} />}
         imagePath={question.image_path}
         title={question.question_text}
       />

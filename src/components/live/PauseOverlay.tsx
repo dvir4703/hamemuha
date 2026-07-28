@@ -41,8 +41,7 @@ export function PauseOverlay({ visible }: PauseOverlayProps) {
           >
             <Pause size={46} fill="currentColor" strokeWidth={1.6} />
           </motion.span>
-          <p className="live-stage__eyebrow mt-8">מיד חוזרים לבמה</p>
-          <h2 className="mt-3 font-display text-5xl font-black tracking-tight sm:text-7xl">
+          <h2 className="mt-8 font-display text-5xl font-black tracking-tight sm:text-7xl">
             המשחק מושהה
           </h2>
           <p className="mt-5 text-lg font-bold text-white/55 sm:text-xl">

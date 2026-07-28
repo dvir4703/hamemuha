@@ -142,7 +142,7 @@ export default function LiveGame() {
             size={44}
           />
           <p className="mt-4 text-lg font-bold text-white/55">
-            מכינים את הבמה…
+            טוענים את החידון…
           </p>
         </div>
       </div>
@@ -180,11 +180,11 @@ export default function LiveGame() {
   }
 
   return (
-    <div className="live-stage relative min-h-screen overflow-hidden px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+    <div className="live-stage relative min-h-screen overflow-hidden">
       <div className="live-stage__atmosphere" aria-hidden="true" />
       <div className="live-stage__beam" aria-hidden="true" />
 
-      <main className="relative mx-auto max-w-[1540px]">
+      <main className="live-stage__main relative">
         {error ? (
           <div
             className="mb-4 flex items-center justify-center gap-3 rounded-2xl border border-red-300/25 bg-red-950/55 px-5 py-3 text-center font-bold text-red-100 shadow-2xl backdrop-blur"
@@ -194,87 +194,33 @@ export default function LiveGame() {
           </div>
         ) : null}
 
-        <motion.header
-          initial={
-            shouldReduceMotion ? false : { opacity: 0, y: -24, scale: 0.985 }
-          }
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.46, ease: [0.22, 0.85, 0.25, 1] }}
-          className="live-stage__broadcast-bar flex min-h-24 items-stretch justify-between gap-3 rounded-[1.75rem] px-4 py-3 sm:gap-6 sm:px-6"
-          aria-label="מצב המתמודד הנוכחי"
-        >
-          {currentContestant ? (
-            <>
-              <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
-                <span
-                  className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-[#ffe08a]/25 bg-[#f4b942]/10 font-display text-xl font-black text-[#ffe08a] sm:h-14 sm:w-14 sm:text-2xl"
-                  aria-hidden="true"
-                >
-                  {currentContestant.display_order}
-                </span>
-                <div className="min-w-0">
-                  <p className="live-stage__eyebrow">עכשיו על הבמה</p>
-                  <h1
-                    id="current-contestant-name"
-                    className="truncate font-display text-2xl font-black leading-tight text-white sm:text-4xl"
-                  >
-                    {currentContestant.name}
-                  </h1>
-                </div>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-2 sm:gap-4">
-                <div className="live-stage__question-count hidden rounded-2xl px-4 py-3 text-center sm:block">
-                  <span className="block text-xs font-bold">השאלה הנוכחית</span>
-                  <strong className="mt-0.5 block font-display text-lg font-black text-white">
-                    {displayedQuestionNumber} מתוך {currentQuestions.length}
-                  </strong>
-                </div>
-
-                <div
-                  className="live-stage__score min-w-[7.2rem] rounded-2xl px-4 py-2 text-center sm:min-w-[9rem] sm:px-6"
-                  aria-live="polite"
-                  aria-label={`${currentScore} נקודות`}
-                >
-                  <span className="relative block text-[0.68rem] font-black tracking-wide text-white/70">
-                    ניקוד
-                  </span>
-                  <motion.strong
-                    key={`${currentContestant.id}-${currentScore}`}
-                    initial={
-                      shouldReduceMotion
-                        ? false
-                        : { opacity: 0, y: 14, scale: 0.82 }
-                    }
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{
-                      type: 'spring',
-                      stiffness: 320,
-                      damping: 22,
-                    }}
-                    className="live-stage__score-value relative block font-display text-4xl font-black leading-none text-white sm:text-5xl"
-                  >
-                    {currentScore}
-                  </motion.strong>
-                  <span className="relative mt-1 block text-[0.65rem] font-bold text-white/65">
-                    נקודות
-                  </span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="grid w-full place-items-center text-lg font-bold text-white/55">
-              ממתינים למתמודד
-            </div>
-          )}
-        </motion.header>
-
-        <div className="mt-3 text-center text-xs font-bold text-white/45 sm:hidden">
-          שאלה {displayedQuestionNumber} מתוך {currentQuestions.length}
-        </div>
+        {currentContestant ? (
+          <motion.div
+            initial={
+              shouldReduceMotion ? false : { opacity: 0, y: -20, scale: 0.94 }
+            }
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.42, ease: [0.22, 0.85, 0.25, 1] }}
+            className="live-stage__score-hud"
+            aria-live="polite"
+            aria-label={`${currentScore} נקודות`}
+          >
+            <span>ניקוד</span>
+            <motion.strong
+              key={`${currentContestant.id}-${currentScore}`}
+              initial={
+                shouldReduceMotion ? false : { opacity: 0, y: 14, scale: 0.82 }
+              }
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 22 }}
+            >
+              {currentScore}
+            </motion.strong>
+          </motion.div>
+        ) : null}
 
         <section
-          className="live-stage__question-frame mt-4 min-h-[calc(100vh-9.5rem)] overflow-hidden rounded-[2rem] p-4 sm:mt-5 sm:min-h-[calc(100vh-12rem)] sm:p-6 lg:p-8"
+          className="live-stage__question-frame"
           aria-label={
             currentContestant
               ? `השאלה של ${currentContestant.name}`
@@ -283,7 +229,7 @@ export default function LiveGame() {
         >
           {currentContestant ? (
             contestantFinished ? (
-              <div className="live-stage__empty grid min-h-[calc(100vh-14rem)] place-items-center rounded-[1.5rem] text-center">
+              <div className="live-stage__completion">
                 <motion.div
                   initial={
                     shouldReduceMotion
@@ -293,87 +239,94 @@ export default function LiveGame() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ type: 'spring', stiffness: 180, damping: 20 }}
                 >
-                  <span className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-[#d58d18]/30 bg-[#f4b942]/10 text-[#b87812]">
+                  <span className="live-stage__completion-icon mx-auto grid h-20 w-20 place-items-center rounded-full">
                     <Flag size={38} />
                   </span>
-                  <h2 className="mt-6 font-display text-4xl font-black text-[#11152c] sm:text-6xl">
-                    כל השאלות הושלמו
+                  <h2 className="live-stage__completion-title">
+                    יישר כוח, {currentContestant.name}!
                   </h2>
-                  <p className="mt-3 text-xl font-bold text-[#11152c]/50">
-                    כל הכבוד, {currentContestant.name}
-                  </p>
+                  <p className="live-stage__completion-copy">עבודה נהדרת!</p>
                 </motion.div>
               </div>
-            ) : (
-              <div className="py-2 sm:py-4">
-                {currentQuestion ? (
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.div
-                      key={
-                        isShowingFeedback
-                          ? `feedback-${lastAnswerResult?.submissionId}`
-                          : `question-${currentQuestion.id}`
+            ) : currentQuestion ? (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={
+                    isShowingFeedback
+                      ? `feedback-${lastAnswerResult?.submissionId}`
+                      : `question-${currentQuestion.id}`
+                  }
+                  initial={
+                    shouldReduceMotion
+                      ? { opacity: 0 }
+                      : {
+                          opacity: 0,
+                          x: 72,
+                          scale: 0.965,
+                          filter: 'blur(9px)',
+                        }
+                  }
+                  animate={{
+                    opacity: 1,
+                    x: 0,
+                    scale: 1,
+                    filter: 'blur(0px)',
+                  }}
+                  exit={
+                    shouldReduceMotion
+                      ? { opacity: 0 }
+                      : {
+                          opacity: 0,
+                          x: -54,
+                          scale: 0.98,
+                          filter: 'blur(6px)',
+                        }
+                  }
+                  transition={{
+                    duration: shouldReduceMotion ? 0.12 : 0.46,
+                    ease: [0.22, 0.82, 0.24, 1],
+                  }}
+                  className="live-stage__question-transition"
+                >
+                  {isShowingFeedback && lastAnswerResult ? (
+                    <AnswerFeedbackScreen
+                      question={currentQuestion}
+                      result={lastAnswerResult}
+                      paused={
+                        gamePhase === 'paused' ||
+                        exitConfirmationOpen ||
+                        cheatSheetOpen
                       }
-                      initial={
-                        shouldReduceMotion
-                          ? { opacity: 0 }
-                          : {
-                              opacity: 0,
-                              x: 72,
-                              scale: 0.965,
-                              filter: 'blur(9px)',
-                            }
-                      }
-                      animate={{
-                        opacity: 1,
-                        x: 0,
-                        scale: 1,
-                        filter: 'blur(0px)',
-                      }}
-                      exit={
-                        shouldReduceMotion
-                          ? { opacity: 0 }
-                          : {
-                              opacity: 0,
-                              x: -54,
-                              scale: 0.98,
-                              filter: 'blur(6px)',
-                            }
-                      }
-                      transition={{
-                        duration: shouldReduceMotion ? 0.12 : 0.46,
-                        ease: [0.22, 0.82, 0.24, 1],
-                      }}
-                    >
-                      {isShowingFeedback && lastAnswerResult ? (
-                        <AnswerFeedbackScreen
-                          question={currentQuestion}
-                          result={lastAnswerResult}
-                          paused={
-                            gamePhase === 'paused' ||
-                            exitConfirmationOpen ||
-                            cheatSheetOpen
-                          }
-                        />
-                      ) : (
-                        <LiveQuestionRenderer
-                          question={currentQuestion}
-                          revealedHints={revealedHints}
-                        />
-                      )}
-                    </motion.div>
-                  </AnimatePresence>
-                ) : null}
-              </div>
-            )
+                    />
+                  ) : (
+                    <LiveQuestionRenderer
+                      question={currentQuestion}
+                      revealedHints={revealedHints}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            ) : null
           ) : (
-            <div className="live-stage__empty grid min-h-[calc(100vh-14rem)] place-items-center rounded-[1.5rem] text-center">
-              <p className="font-display text-3xl font-black text-[#11152c]/40">
-                ממתינים לשאלה הבאה
-              </p>
+            <div className="live-stage__waiting">
+              <p>ממתינים לשאלה הבאה</p>
             </div>
           )}
         </section>
+
+        {currentContestant ? (
+          <footer className="live-stage__corner-hud">
+            <div className="live-stage__contestant-hud">
+              <span aria-hidden="true">{currentContestant.display_order}</span>
+              <strong id="current-contestant-name">
+                {currentContestant.name}
+              </strong>
+            </div>
+            <div className="live-stage__pagination-hud">
+              שאלה {displayedQuestionNumber} מתוך {currentQuestions.length}
+            </div>
+          </footer>
+        ) : null}
       </main>
 
       <KeyboardCheatSheet

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Award, Sparkles, Star } from 'lucide-react';
+import { Award, Sparkles, Star } from 'lucide-react';
 import { animate, motion, useReducedMotion } from 'framer-motion';
 
 import type { QuestionWithRelations } from '../../../types';
@@ -104,13 +104,7 @@ export function CorrectAnswerScreen({
         }}
         className="live-feedback__headline"
       >
-        <div className="live-feedback__eyebrow">
-          <Sparkles size={20} aria-hidden="true" />
-          פגיעה מדויקת
-          <Sparkles size={20} aria-hidden="true" />
-        </div>
         <h3>תשובה נכונה!</h3>
-        <p>בול במקום — ממשיכים עם האנרגיה הזאת.</p>
       </motion.div>
 
       <motion.div
@@ -156,12 +150,6 @@ export function CorrectAnswerScreen({
       ) : null}
 
       <div className="live-feedback__advance">
-        <p>
-          <ArrowRight size={17} aria-hidden="true" />
-          {paused
-            ? 'ההתקדמות האוטומטית מושהית'
-            : 'אפשר להמשיך עכשיו עם חץ ימינה'}
-        </p>
         {!paused ? (
           <div className="live-feedback__progress" aria-hidden="true">
             <motion.div

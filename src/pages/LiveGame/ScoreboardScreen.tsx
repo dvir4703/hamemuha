@@ -6,7 +6,6 @@ import {
   Home,
   LoaderCircle,
   Medal,
-  Sparkles,
   Star,
   Trophy,
 } from 'lucide-react';
@@ -238,8 +237,7 @@ export function ScoreboardScreen({
               alt="החידון והחוויה — בניהולו של יואב שלומברג"
               className="live-scoreboard__logo"
             />
-            <div>
-              <p className="live-scoreboard__eyebrow">טקס התוצאות הגדול</p>
+            <div className="live-scoreboard__title-block">
               <h1 id="scoreboard-title">{quiz?.name ?? 'החידון והחוויה'}</h1>
             </div>
             <div className="live-scoreboard__message">
@@ -281,7 +279,6 @@ export function ScoreboardScreen({
               <div className="live-scoreboard__champion-copy">
                 <span>המקום הראשון</span>
                 <h2>{winner.contestant.name}</h2>
-                <p>{winner.contestant.name}, הבמה כולה שלכם!</p>
               </div>
 
               <div className="live-scoreboard__champion-score">
@@ -386,25 +383,6 @@ export function ScoreboardScreen({
               </div>
             )}
           </div>
-
-          {winner ? (
-            <motion.footer
-              data-scoreboard-motion
-              initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                delay: shouldReduceMotion
-                  ? 0
-                  : (winnerRevealDelayMs + 420) / 1000,
-                duration: 0.38,
-              }}
-              className="live-scoreboard__finale"
-            >
-              <Sparkles size={18} aria-hidden="true" />
-              תודה לכל מי ששיחק, חשב, ניסה ולמד יחד
-              <Sparkles size={18} aria-hidden="true" />
-            </motion.footer>
-          ) : null}
         </section>
 
         <div className="live-scoreboard__actions">

@@ -66,15 +66,6 @@ export function OpeningScreen({
             </div>
           </motion.div>
 
-          <motion.p
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.28, duration: 0.4 }}
-            className="live-opening__eyebrow"
-          >
-            האורות עולים · החידון מתחיל
-          </motion.p>
-
           <motion.div
             initial={
               shouldReduceMotion
@@ -110,15 +101,6 @@ export function OpeningScreen({
             />
           </motion.div>
 
-          <motion.p
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.84, duration: 0.42 }}
-            className="mx-auto mt-6 max-w-2xl text-xl font-semibold text-white/58 sm:text-2xl"
-          >
-            הבמה מוכנה. מי יכבוש אותה?
-          </motion.p>
-
           <motion.button
             type="button"
             onClick={onStart}
@@ -128,24 +110,13 @@ export function OpeningScreen({
             transition={{ delay: 0.98, duration: 0.44 }}
             whileHover={canStart ? { scale: 1.025, y: -2 } : undefined}
             whileTap={canStart ? { scale: 0.985 } : undefined}
-            className="live-opening__start mx-auto mt-9 inline-flex min-w-[min(24rem,88vw)] items-center justify-center gap-4 rounded-[1.4rem] px-8 py-5 font-display text-xl font-black outline-none focus-visible:ring-4 focus-visible:ring-[#ffe08a]/30 disabled:cursor-not-allowed disabled:opacity-45 sm:text-2xl"
+            className="live-opening__start mx-auto mt-12 inline-flex min-w-[min(24rem,88vw)] items-center justify-center gap-4 rounded-[1.4rem] px-8 py-5 font-display text-xl font-black outline-none focus-visible:ring-4 focus-visible:ring-[#ffe08a]/30 disabled:cursor-not-allowed disabled:opacity-45 sm:text-2xl"
           >
             <Play className="relative" size={25} fill="currentColor" />
             <span className="relative">
               {canStart ? 'לחצו Enter להתחלה' : 'אין מתמודדים בחידון'}
             </span>
           </motion.button>
-
-          {canStart ? (
-            <motion.p
-              initial={shouldReduceMotion ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.14, duration: 0.4 }}
-              className="mt-4 text-sm font-bold text-white/38"
-            >
-              אפשר גם ללחוץ על הכפתור
-            </motion.p>
-          ) : null}
         </section>
       </main>
     </div>

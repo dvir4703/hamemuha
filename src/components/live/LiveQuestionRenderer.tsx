@@ -1,4 +1,3 @@
-import { LockKeyhole, Sparkles } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 import { useLiveStore } from '../../store/liveStore';
@@ -54,14 +53,8 @@ export function LiveQuestionRenderer({
     >
       <motion.div layout="position" className="live-question-shell__status">
         <span className="live-question-shell__points">
-          <Sparkles size={17} aria-hidden="true" />
           {potentialPoints} נקודות
         </span>
-        {gamePhase === 'showing_answer' ? (
-          <span className="live-question-shell__locked" role="status">
-            <LockKeyhole size={17} /> התשובה נקלטה
-          </span>
-        ) : null}
       </motion.div>
       <motion.div layout="position" className="live-question-shell__content">
         <QuestionComponent

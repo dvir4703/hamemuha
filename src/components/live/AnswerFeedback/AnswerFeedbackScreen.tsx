@@ -11,7 +11,7 @@ import { CorrectAnswerScreen } from './CorrectAnswerScreen';
 import { WrongAnswerScreen } from './WrongAnswerScreen';
 
 // TODO: replace correct.mp3 and wrong.mp3 with real sound files.
-export const CORRECT_FEEDBACK_AUTO_ADVANCE_MS = 3600;
+export const CORRECT_FEEDBACK_AUTO_ADVANCE_MS = 5600;
 
 const handledSubmissions = new Set<number>();
 const fireConfetti = confetti.create(undefined, {
