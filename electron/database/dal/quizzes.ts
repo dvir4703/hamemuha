@@ -83,11 +83,11 @@ export function getQuizById(id: number): Quiz | null {
   );
 }
 
-export function createQuiz({ name, logoPath }: CreateQuizInput): Quiz {
+export function createQuiz({ name }: CreateQuizInput): Quiz {
   const database = getDatabase();
   const result = database
-    .prepare('INSERT INTO quizzes (name, logo_path) VALUES (?, ?)')
-    .run(requireQuizName(name), logoPath ?? null);
+    .prepare('INSERT INTO quizzes (name) VALUES (?)')
+    .run(requireQuizName(name));
   const quiz = getQuizById(Number(result.lastInsertRowid));
 
   if (!quiz) {
@@ -97,20 +97,17 @@ export function createQuiz({ name, logoPath }: CreateQuizInput): Quiz {
   return quiz;
 }
 
-export function updateQuiz(
-  id: number,
-  { name, logoPath }: UpdateQuizInput,
-): Quiz | null {
+export function updateQuiz(id: number, { name }: UpdateQuizInput): Quiz | null {
   const database = getDatabase();
   const result = database
     .prepare(
       `
         UPDATE quizzes
-        SET name = ?, logo_path = ?, updated_at = CURRENT_TIMESTAMP
+        SET name = ?, updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `,
     )
-    .run(requireQuizName(name), logoPath ?? null, id);
+    .run(requireQuizName(name), id);
 
   return result.changes > 0 ? getQuizById(id) : null;
 }
@@ -169,8 +166,8 @@ export function duplicateQuiz(id: number): Quiz {
       .all(id) as Hint[];
 
     const quizResult = database
-      .prepare('INSERT INTO quizzes (name, logo_path) VALUES (?, ?)')
-      .run(getNextCopyName(sourceQuiz.name), sourceQuiz.logo_path);
+      .prepare('INSERT INTO quizzes (name) VALUES (?)')
+      .run(getNextCopyName(sourceQuiz.name));
     const newQuizId = Number(quizResult.lastInsertRowid);
     const contestantIdMap = new Map<number, number>();
     const answersByQuestion = new Map<number, AnswerRow[]>();

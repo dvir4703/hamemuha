@@ -39,6 +39,11 @@ import type {
   QuestionWithRelations,
   Quiz,
 } from '../../types';
+import {
+  getUniqueRevealCharacters,
+  isSingleRevealCharacter,
+  normalizeRevealCharacter,
+} from '../../utils/letterReveal';
 
 interface FormErrors extends FieldErrors {
   contestantId?: string;
@@ -242,6 +247,35 @@ export default function QuestionForm() {
         )
       )
         next.hints = 'הפחתת הניקוד חייבת להיות מספר שלם שאינו שלילי.';
+      else if (questionType === 'complete_sentence') {
+        const letterHints = hints.filter(
+          (hint) => hint.hintType === 'letter_reveal',
+        );
+        const selectedCharacters = letterHints.map((hint) =>
+          normalizeRevealCharacter(hint.hintText),
+        );
+        const validCharacters = new Set(
+          getUniqueRevealCharacters(correctAnswerText).map(
+            normalizeRevealCharacter,
+          ),
+        );
+
+        if (
+          letterHints.some((hint) => !isSingleRevealCharacter(hint.hintText))
+        ) {
+          next.hints = 'יש לבחור אות בכל רמז מסוג חשיפת אות.';
+        } else if (
+          selectedCharacters.some(
+            (character) => !validCharacters.has(character),
+          )
+        ) {
+          next.hints = 'אחת האותיות שנבחרו לרמז כבר אינה מופיעה בתשובה הנכונה.';
+        } else if (
+          new Set(selectedCharacters).size !== selectedCharacters.length
+        ) {
+          next.hints = 'לא ניתן לבחור את אותה אות ביותר מרמז חשיפת אות אחד.';
+        }
+      }
     }
     return next;
   };
@@ -294,7 +328,7 @@ export default function QuestionForm() {
           ? hints.map((hint, index) => ({
               hintType:
                 questionType === 'association_hints' ? 'text' : hint.hintType,
-              hintText: hint.hintType === 'text' ? hint.hintText.trim() : null,
+              hintText: hint.hintText.trim() || null,
               hintOrder: index + 1,
               pointsPenalty: hint.pointsPenalty,
             }))

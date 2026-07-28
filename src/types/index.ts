@@ -124,7 +124,6 @@ export interface SaveScoreboardImageResult {
 
 export interface QuizMutationInput {
   name: string;
-  logoPath?: string | null;
 }
 
 export interface ContestantCreateInput {

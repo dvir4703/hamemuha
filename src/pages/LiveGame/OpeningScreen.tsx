@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { Play, Sparkles } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
-import { useImageUrl } from '../../hooks/useImageUrl';
+import companyLogo from '../../assets/images/company-logo.jpeg';
 import type { Quiz } from '../../types';
 
 interface OpeningScreenProps {
@@ -18,7 +18,6 @@ export function OpeningScreen({
   enabled,
   onStart,
 }: OpeningScreenProps) {
-  const logoUrl = useImageUrl(quiz?.logo_path ?? null);
   const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
@@ -58,35 +57,13 @@ export function OpeningScreen({
               damping: 18,
             }}
           >
-            {logoUrl ? (
-              <div className="live-opening__logo mx-auto mb-7 inline-flex max-w-[20rem] items-center justify-center rounded-[2rem] p-3 sm:mb-9">
-                <img
-                  src={logoUrl}
-                  alt={`הלוגו של ${quiz?.name ?? 'החידון'}`}
-                  className="max-h-40 max-w-full rounded-[1.35rem] object-contain sm:max-h-48"
-                />
-              </div>
-            ) : (
-              <div
-                className="live-opening__logo mx-auto mb-7 grid h-28 w-28 place-items-center rounded-full text-[#ffe08a] sm:mb-9 sm:h-32 sm:w-32"
-                aria-hidden="true"
-              >
-                <motion.div
-                  animate={
-                    shouldReduceMotion
-                      ? undefined
-                      : { rotate: [0, 5, -4, 0], scale: [1, 1.06, 1, 1] }
-                  }
-                  transition={{
-                    duration: 5,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                  }}
-                >
-                  <Sparkles size={58} strokeWidth={1.7} />
-                </motion.div>
-              </div>
-            )}
+            <div className="live-opening__logo mx-auto mb-7 inline-flex max-w-[20rem] items-center justify-center rounded-[2rem] p-3 sm:mb-9">
+              <img
+                src={companyLogo}
+                alt="החידון והחוויה — בניהולו של יואב שלומברג"
+                className="max-h-40 max-w-full rounded-[1.35rem] object-contain sm:max-h-48"
+              />
+            </div>
           </motion.div>
 
           <motion.p

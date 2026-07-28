@@ -8,6 +8,11 @@ import type {
   QuestionSummaryWithRelations,
   QuestionWithRelations,
 } from '../../../src/types';
+import {
+  getUniqueRevealCharacters,
+  isSingleRevealCharacter,
+  normalizeRevealCharacter,
+} from '../../../src/utils/letterReveal';
 import { getDatabase } from '../connection';
 import {
   getAnswersByQuestionId,
@@ -54,13 +59,42 @@ function validateAnswers(answers: AnswerInput[]): void {
   }
 }
 
-function validateHints(hints: HintInput[], requireOne: boolean): void {
+function validateHints(
+  hints: HintInput[],
+  requireOne: boolean,
+  correctAnswerText?: string,
+): void {
   if (requireOne && hints.length === 0) {
     throw new Error('יש להוסיף לפחות רמז אחד.');
   }
+  const availableCharacters =
+    correctAnswerText === undefined
+      ? null
+      : new Set(
+          getUniqueRevealCharacters(correctAnswerText).map(
+            normalizeRevealCharacter,
+          ),
+        );
+  const selectedCharacters = new Set<string>();
+
   for (const hint of hints) {
     if (hint.hintType === 'text' && !hint.hintText?.trim()) {
       throw new Error('יש למלא טקסט בכל הרמזים הטקסטואליים.');
+    }
+    if (hint.hintType === 'letter_reveal' && availableCharacters) {
+      const selectedCharacter = hint.hintText?.trim() ?? '';
+      if (!isSingleRevealCharacter(selectedCharacter)) {
+        throw new Error('יש לבחור אות בכל רמז מסוג חשיפת אות.');
+      }
+
+      const normalizedCharacter = normalizeRevealCharacter(selectedCharacter);
+      if (!availableCharacters.has(normalizedCharacter)) {
+        throw new Error('אחת האותיות שנבחרו לרמז אינה מופיעה בתשובה הנכונה.');
+      }
+      if (selectedCharacters.has(normalizedCharacter)) {
+        throw new Error('לא ניתן לבחור את אותה אות ביותר מרמז חשיפת אות אחד.');
+      }
+      selectedCharacters.add(normalizedCharacter);
     }
     if (!Number.isInteger(hint.pointsPenalty) || hint.pointsPenalty < 0) {
       throw new Error('הפחתת הניקוד ברמז חייבת להיות מספר שלם שאינו שלילי.');
@@ -107,8 +141,11 @@ function validateQuestionInput(data: QuestionMutationInput): void {
       }
       break;
     case 'complete_sentence':
-      requireNonEmpty(data.correctAnswerText ?? '', 'יש להזין תשובה נכונה.');
-      validateHints(data.hints, false);
+      validateHints(
+        data.hints,
+        false,
+        requireNonEmpty(data.correctAnswerText ?? '', 'יש להזין תשובה נכונה.'),
+      );
       break;
     case 'open_answer':
       requireNonEmpty(data.correctAnswerText ?? '', 'יש להזין תשובה נכונה.');

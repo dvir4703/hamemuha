@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ImagePlus, LoaderCircle, Plus, X } from 'lucide-react';
+import { LoaderCircle, Plus, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import type { QuizMutationInput } from '../../types';
@@ -11,10 +11,7 @@ interface CreateQuizModalProps {
 
 export function CreateQuizModal({ onClose, onCreate }: CreateQuizModalProps) {
   const [name, setName] = useState('');
-  const [logoPath, setLogoPath] = useState<string | null>(null);
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSelectingImage, setIsSelectingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,26 +28,6 @@ export function CreateQuizModal({ onClose, onCreate }: CreateQuizModalProps) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isSaving, onClose]);
 
-  const handleSelectLogo = async () => {
-    setIsSelectingImage(true);
-    setError(null);
-
-    try {
-      const selectedPath =
-        await window.api.file.selectAndSaveImage('quiz-logos');
-
-      if (selectedPath) {
-        const selectedUrl = await window.api.file.getImageUrl(selectedPath);
-        setLogoPath(selectedPath);
-        setLogoUrl(selectedUrl);
-      }
-    } catch {
-      setError('לא הצלחנו לשמור את התמונה. נסו לבחור קובץ אחר.');
-    } finally {
-      setIsSelectingImage(false);
-    }
-  };
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedName = name.trim();
@@ -65,7 +42,7 @@ export function CreateQuizModal({ onClose, onCreate }: CreateQuizModalProps) {
     setError(null);
 
     try {
-      await onCreate({ name: trimmedName, logoPath });
+      await onCreate({ name: trimmedName });
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -135,41 +112,6 @@ export function CreateQuizModal({ onClose, onCreate }: CreateQuizModalProps) {
               maxLength={120}
               required
             />
-          </div>
-
-          <div>
-            <span className="mb-2 block text-sm font-bold text-ink">
-              לוגו לחידון{' '}
-              <span className="font-normal text-ink/45">(רשות)</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => void handleSelectLogo()}
-              disabled={isSelectingImage || isSaving}
-              className="group flex w-full items-center gap-4 rounded-2xl border border-dashed border-ink/20 bg-canvas/70 p-4 text-right transition hover:border-teal/60 hover:bg-teal/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal disabled:cursor-wait disabled:opacity-60"
-            >
-              <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white text-teal shadow-sm">
-                {logoUrl ? (
-                  <img
-                    src={logoUrl}
-                    alt="תצוגה מקדימה של הלוגו"
-                    className="h-full w-full object-cover"
-                  />
-                ) : isSelectingImage ? (
-                  <LoaderCircle className="animate-spin" aria-hidden="true" />
-                ) : (
-                  <ImagePlus aria-hidden="true" />
-                )}
-              </span>
-              <span>
-                <span className="block font-bold text-ink">
-                  {logoPath ? 'החלפת התמונה' : 'בחירת תמונה מהמחשב'}
-                </span>
-                <span className="mt-1 block text-sm text-ink/55">
-                  PNG או JPG — אפשר להוסיף גם אחר כך
-                </span>
-              </span>
-            </button>
           </div>
 
           {error ? (

@@ -60,9 +60,7 @@ export function replaceHints(
     insert.run(
       questionId,
       hint.hintType,
-      hint.hintType === 'letter_reveal'
-        ? null
-        : (hint.hintText?.trim() ?? null),
+      hint.hintText?.trim() || null,
       hint.hintOrder,
       hint.pointsPenalty,
     );

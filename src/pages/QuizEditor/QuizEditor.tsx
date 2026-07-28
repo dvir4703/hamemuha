@@ -164,7 +164,6 @@ export default function QuizEditor() {
     try {
       const updated = await window.api.quiz.update(quiz.id, {
         name,
-        logoPath: quiz.logo_path,
       });
       if (updated) {
         setQuiz(updated);

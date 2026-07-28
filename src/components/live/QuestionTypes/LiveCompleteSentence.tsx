@@ -13,6 +13,10 @@ import {
   calculatePotentialPoints,
   getOrderedHints,
 } from '../../../utils/liveQuestion';
+import {
+  getRevealCharacterPositions,
+  isSingleRevealCharacter,
+} from '../../../utils/letterReveal';
 import { LiveQuestionHeader } from './LiveQuestionHeader';
 import type { LiveQuestionTypeProps } from './types';
 
@@ -34,12 +38,26 @@ export function LiveCompleteSentence({
     .filter(({ character }) => !/\s/u.test(character))
     .map(({ index }) => index);
   const activeHints = getOrderedHints(question).slice(0, revealedHints);
-  const revealedLetterCount = activeHints.filter(
+  const activeLetterHints = activeHints.filter(
     (hint) => hint.hint_type === 'letter_reveal',
-  ).length;
-  const revealedPositions = new Set(
-    editablePositions.slice(0, revealedLetterCount),
   );
+  const revealedPositions = new Set<number>();
+
+  for (const hint of activeLetterHints) {
+    const selectedCharacter = hint.hint_text?.trim() ?? '';
+    if (isSingleRevealCharacter(selectedCharacter)) {
+      for (const position of getRevealCharacterPositions(correctAnswer, [
+        selectedCharacter,
+      ])) {
+        revealedPositions.add(position);
+      }
+    } else {
+      const legacyPosition = editablePositions.find(
+        (position) => !revealedPositions.has(position),
+      );
+      if (legacyPosition !== undefined) revealedPositions.add(legacyPosition);
+    }
+  }
   const textHints = activeHints.filter((hint) => hint.hint_type === 'text');
   const [values, setValues] = useState<string[]>(() =>
     characters.map(() => ''),

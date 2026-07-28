@@ -1,5 +1,9 @@
 import { Eye, Lightbulb, Plus, Trash2 } from 'lucide-react';
 
+import {
+  getUniqueRevealCharacters,
+  normalizeRevealCharacter,
+} from '../../../utils/letterReveal';
 import type { FieldErrors, HintDraft } from './types';
 import { createHintDraft } from './types';
 
@@ -18,10 +22,34 @@ export function CompleteSentenceFields({
   onCorrectAnswerChange,
   onHintsChange,
 }: CompleteSentenceFieldsProps) {
+  const revealCharacters = getUniqueRevealCharacters(correctAnswerText);
+
   const updateHint = (key: string, changes: Partial<HintDraft>) => {
     onHintsChange(
       hints.map((hint) => (hint.key === key ? { ...hint, ...changes } : hint)),
     );
+  };
+
+  const handleCorrectAnswerChange = (value: string) => {
+    const availableCharacters = new Set(
+      getUniqueRevealCharacters(value).map(normalizeRevealCharacter),
+    );
+    let clearedInvalidSelection = false;
+    const nextHints = hints.map((hint) => {
+      if (
+        hint.hintType !== 'letter_reveal' ||
+        !hint.hintText ||
+        availableCharacters.has(normalizeRevealCharacter(hint.hintText))
+      ) {
+        return hint;
+      }
+
+      clearedInvalidSelection = true;
+      return { ...hint, hintText: '' };
+    });
+
+    onCorrectAnswerChange(value);
+    if (clearedInvalidSelection) onHintsChange(nextHints);
   };
 
   return (
@@ -36,7 +64,7 @@ export function CompleteSentenceFields({
         <input
           id="sentence-answer"
           value={correctAnswerText}
-          onChange={(event) => onCorrectAnswerChange(event.target.value)}
+          onChange={(event) => handleCorrectAnswerChange(event.target.value)}
           aria-invalid={Boolean(errors.correctAnswerText)}
           className={`w-full rounded-2xl border bg-white px-4 py-3.5 font-semibold outline-none focus:ring-4 ${errors.correctAnswerText ? 'border-coral focus:ring-coral/10' : 'border-ink/10 focus:border-violet focus:ring-violet/10'}`}
           placeholder="למשל: ירושלים"
@@ -154,9 +182,62 @@ export function CompleteSentenceFields({
                   />
                 </div>
               ) : (
-                <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-violet">
-                  <Eye size={15} /> בלייב תיחשף האות הבאה שעדיין מוסתרת.
-                </p>
+                <div className="mt-3">
+                  <span className="mb-2 block text-xs font-bold text-ink/50">
+                    איזו אות תיחשף?
+                  </span>
+                  {revealCharacters.length > 0 ? (
+                    <div
+                      className="flex flex-wrap gap-2"
+                      role="group"
+                      aria-label={`בחירת אות לרמז ${index + 1}`}
+                    >
+                      {revealCharacters.map((character) => {
+                        const normalizedCharacter =
+                          normalizeRevealCharacter(character);
+                        const isSelected =
+                          normalizeRevealCharacter(hint.hintText) ===
+                          normalizedCharacter;
+                        const isSelectedElsewhere = hints.some(
+                          (otherHint) =>
+                            otherHint.key !== hint.key &&
+                            otherHint.hintType === 'letter_reveal' &&
+                            normalizeRevealCharacter(otherHint.hintText) ===
+                              normalizedCharacter,
+                        );
+
+                        return (
+                          <button
+                            key={normalizedCharacter}
+                            type="button"
+                            disabled={isSelectedElsewhere && !isSelected}
+                            aria-pressed={isSelected}
+                            onClick={() =>
+                              updateHint(hint.key, { hintText: character })
+                            }
+                            className={`grid h-10 min-w-10 place-items-center rounded-xl border px-3 font-display text-lg font-black transition ${
+                              isSelected
+                                ? 'border-violet bg-violet text-white shadow-sm'
+                                : isSelectedElsewhere
+                                  ? 'cursor-not-allowed border-ink/10 bg-canvas text-ink/25'
+                                  : 'border-violet/20 bg-white text-violet hover:border-violet/55 hover:bg-violet/5'
+                            }`}
+                          >
+                            {character}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="rounded-xl bg-canvas px-3 py-2.5 text-xs font-semibold text-ink/50">
+                      הזינו תחילה את התשובה הנכונה כדי לבחור אות.
+                    </p>
+                  )}
+                  <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-violet">
+                    <Eye size={15} /> בלייב ייחשפו יחד כל המופעים של האות
+                    שנבחרה.
+                  </p>
+                </div>
               )}
             </div>
           ))}

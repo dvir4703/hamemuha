@@ -11,7 +11,6 @@ import {
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
-import { useImageUrl } from '../../hooks/useImageUrl';
 import type { QuizSummary } from '../../types';
 import { formatRelativeDate } from '../../utils/date';
 
@@ -25,7 +24,6 @@ const accentClasses = ['bg-teal', 'bg-amber', 'bg-coral', 'bg-violet'] as const;
 
 export function QuizCard({ quiz, onDelete, onDuplicate }: QuizCardProps) {
   const navigate = useNavigate();
-  const logoUrl = useImageUrl(quiz.logo_path);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -148,15 +146,7 @@ export function QuizCard({ quiz, onDelete, onDuplicate }: QuizCardProps) {
       >
         <div className="mb-5 flex items-start gap-4 pl-9">
           <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-[20px] bg-canvas text-teal ring-1 ring-ink/[0.06]">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={`הלוגו של ${quiz.name}`}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <FileQuestion size={30} strokeWidth={1.8} aria-hidden="true" />
-            )}
+            <FileQuestion size={30} strokeWidth={1.8} aria-hidden="true" />
           </div>
           <div className="min-w-0 pt-1">
             <h2 className="line-clamp-2 font-display text-xl font-bold leading-7 text-ink">

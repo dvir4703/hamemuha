@@ -12,8 +12,8 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
+import companyLogo from '../../assets/images/company-logo.jpeg';
 import { Toast } from '../../components/ui/Toast';
-import { useImageDataUrl } from '../../hooks/useImageDataUrl';
 import type { ContestantLiveStats } from '../../store/liveStore';
 import '../../styles/live-results.css';
 import type { Contestant, Quiz } from '../../types';
@@ -73,7 +73,6 @@ export function ScoreboardScreen({
 }: ScoreboardScreenProps) {
   const exportRef = useRef<HTMLElement>(null);
   const shouldReduceMotion = useReducedMotion();
-  const logoUrl = useImageDataUrl(quiz?.logo_path ?? null);
   const [isExporting, setIsExporting] = useState(false);
   const [revealComplete, setRevealComplete] = useState(
     Boolean(shouldReduceMotion),
@@ -234,17 +233,11 @@ export function ScoreboardScreen({
             }}
             className="live-scoreboard__header"
           >
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt={`הלוגו של ${quiz?.name ?? 'החידון'}`}
-                className="live-scoreboard__logo"
-              />
-            ) : (
-              <span className="live-scoreboard__show-mark">
-                <Sparkles size={34} aria-hidden="true" />
-              </span>
-            )}
+            <img
+              src={companyLogo}
+              alt="החידון והחוויה — בניהולו של יואב שלומברג"
+              className="live-scoreboard__logo"
+            />
             <div>
               <p className="live-scoreboard__eyebrow">טקס התוצאות הגדול</p>
               <h1 id="scoreboard-title">{quiz?.name ?? 'החידון והחוויה'}</h1>
