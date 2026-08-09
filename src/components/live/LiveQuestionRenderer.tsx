@@ -14,6 +14,8 @@ import type { LiveQuestionTypeProps } from './QuestionTypes/types';
 interface LiveQuestionRendererProps {
   question: QuestionWithRelations;
   revealedHints: number;
+  revealedOptions: number;
+  timeoutExpired: boolean;
 }
 
 const questionComponents = {
@@ -31,6 +33,8 @@ const questionComponents = {
 export function LiveQuestionRenderer({
   question,
   revealedHints,
+  revealedOptions,
+  timeoutExpired,
 }: LiveQuestionRendererProps) {
   const shouldReduceMotion = useReducedMotion();
   const gamePhase = useLiveStore((state) => state.gamePhase);
@@ -61,6 +65,8 @@ export function LiveQuestionRenderer({
           key={question.id}
           question={question}
           revealedHints={revealedHints}
+          revealedOptions={revealedOptions}
+          timeoutExpired={timeoutExpired}
           onSubmit={submitAnswer}
           disabled={disabled}
         />

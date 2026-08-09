@@ -47,6 +47,7 @@ export interface LiveStoreState {
   statsByContestant: Map<number, ContestantLiveStats>;
   gameStartTime: number | null;
   revealedHintsForCurrentQuestion: number;
+  revealedOptionsForCurrentQuestion: number;
   potentialPointsForCurrentQuestion: number;
   lastAnswerResult: LastAnswerResult | null;
   previousGamePhase: ResumableGamePhase | null;
@@ -61,6 +62,7 @@ export interface LiveStoreState {
   nextQuestion: () => void;
   previousQuestion: () => void;
   revealNextHint: () => number;
+  revealNextOption: () => number;
   submitAnswer: (isCorrect: boolean, pointsAwarded: number) => void;
   togglePause: () => void;
   endGame: () => Promise<GameResultWithContestants | null>;
@@ -80,6 +82,7 @@ interface ResettableLiveState {
   statsByContestant: Map<number, ContestantLiveStats>;
   gameStartTime: number | null;
   revealedHintsForCurrentQuestion: number;
+  revealedOptionsForCurrentQuestion: number;
   potentialPointsForCurrentQuestion: number;
   lastAnswerResult: LastAnswerResult | null;
   previousGamePhase: ResumableGamePhase | null;
@@ -102,6 +105,7 @@ function createIdleState(): ResettableLiveState {
     statsByContestant: new Map(),
     gameStartTime: null,
     revealedHintsForCurrentQuestion: 0,
+    revealedOptionsForCurrentQuestion: 0,
     potentialPointsForCurrentQuestion: 0,
     lastAnswerResult: null,
     previousGamePhase: null,
@@ -224,6 +228,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
         statsByContestant: stats,
         gameStartTime: null,
         revealedHintsForCurrentQuestion: 0,
+        revealedOptionsForCurrentQuestion: 0,
         potentialPointsForCurrentQuestion:
           currentContestantId === null
             ? 0
@@ -300,6 +305,9 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       revealedHintsForCurrentQuestion: isChangingContestant
         ? 0
         : state.revealedHintsForCurrentQuestion,
+      revealedOptionsForCurrentQuestion: isChangingContestant
+        ? 0
+        : state.revealedOptionsForCurrentQuestion,
       potentialPointsForCurrentQuestion: isChangingContestant
         ? basePointsForContestant(
             state.questionsByContestant,
@@ -336,6 +344,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     set({
       currentQuestionIndexByContestant: indexes,
       revealedHintsForCurrentQuestion: 0,
+      revealedOptionsForCurrentQuestion: 0,
       potentialPointsForCurrentQuestion: questions[nextIndex]?.points ?? 0,
       gamePhase: 'playing',
       lastAnswerResult: null,
@@ -366,6 +375,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     set({
       currentQuestionIndexByContestant: indexes,
       revealedHintsForCurrentQuestion: 0,
+      revealedOptionsForCurrentQuestion: 0,
       potentialPointsForCurrentQuestion: questions[previousIndex]?.points ?? 0,
       gamePhase: 'playing',
       lastAnswerResult: null,
@@ -411,6 +421,30 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       statsByContestant: stats,
     });
     return potentialPoints;
+  },
+
+  revealNextOption: () => {
+    const state = get();
+    const question = getCurrentQuestion(state);
+    if (
+      state.gamePhase !== 'playing' ||
+      state.currentContestantId === null ||
+      !question ||
+      question.question_type !== 'multiple_options'
+    ) {
+      return state.revealedOptionsForCurrentQuestion;
+    }
+
+    const nextOptionCount = Math.min(
+      state.revealedOptionsForCurrentQuestion + 1,
+      question.answers.length,
+    );
+    if (nextOptionCount === state.revealedOptionsForCurrentQuestion) {
+      return state.revealedOptionsForCurrentQuestion;
+    }
+
+    set({ revealedOptionsForCurrentQuestion: nextOptionCount });
+    return nextOptionCount;
   },
 
   submitAnswer: (isCorrect, pointsAwarded) => {

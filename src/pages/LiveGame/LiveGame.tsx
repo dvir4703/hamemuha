@@ -8,7 +8,9 @@ import { KeyboardCheatSheet } from '../../components/live/KeyboardCheatSheet';
 import { LiveConfirmationDialog } from '../../components/live/LiveConfirmationDialog';
 import { LiveQuestionRenderer } from '../../components/live/LiveQuestionRenderer';
 import { PauseOverlay } from '../../components/live/PauseOverlay';
+import { QuestionTimer } from '../../components/live/QuestionTimer';
 import { useKeyboard } from '../../hooks/useKeyboard';
+import { useQuestionTimer } from '../../hooks/useQuestionTimer';
 import { selectCurrentQuestion, useLiveStore } from '../../store/liveStore';
 import '../../styles/live-theme.css';
 import { IntroVideoScreen } from './IntroVideoScreen';
@@ -38,6 +40,9 @@ export default function LiveGame() {
   const revealedHints = useLiveStore(
     (state) => state.revealedHintsForCurrentQuestion,
   );
+  const revealedOptions = useLiveStore(
+    (state) => state.revealedOptionsForCurrentQuestion,
+  );
   const potentialPoints = useLiveStore(
     (state) => state.potentialPointsForCurrentQuestion,
   );
@@ -56,12 +61,31 @@ export default function LiveGame() {
   const isHintQuestion =
     currentQuestion?.question_type === 'complete_sentence' ||
     currentQuestion?.question_type === 'association_hints';
+  const isProgressiveOptionQuestion =
+    currentQuestion?.question_type === 'multiple_options';
   const isOpenAnswerQuestion = currentQuestion?.question_type === 'open_answer';
   const isShowingFeedback = Boolean(
     currentQuestion &&
     lastAnswerResult?.questionId === currentQuestion.id &&
     (gamePhase === 'showing_answer' ||
       (gamePhase === 'paused' && previousGamePhase === 'showing_answer')),
+  );
+  const questionTimer = useQuestionTimer(
+    currentQuestion?.id ?? null,
+    currentQuestion?.time_limit ?? null,
+    gamePhase === 'playing' &&
+      !isShowingFeedback &&
+      !exitConfirmationOpen &&
+      !cheatSheetOpen,
+  );
+  const questionTimerPaused =
+    gamePhase === 'paused' || exitConfirmationOpen || cheatSheetOpen;
+  const showQuestionTimer = Boolean(
+    currentQuestion &&
+    questionTimer.remainingSeconds !== null &&
+    !isShowingFeedback &&
+    (gamePhase === 'playing' ||
+      (gamePhase === 'paused' && previousGamePhase === 'playing')),
   );
 
   useEffect(() => {
@@ -107,6 +131,7 @@ export default function LiveGame() {
       gamePhase !== 'finished',
     gameActionsEnabled: gamePhase !== 'intro_video',
     hintEnabled: gamePhase === 'playing' && isHintQuestion,
+    optionRevealEnabled: gamePhase === 'playing' && isProgressiveOptionQuestion,
     judgementEnabled: gamePhase === 'playing' && isOpenAnswerQuestion,
     onExitRequest: handleExitRequest,
     onMarkCorrect: handleMarkCorrect,
@@ -324,6 +349,8 @@ export default function LiveGame() {
                     <LiveQuestionRenderer
                       question={currentQuestion}
                       revealedHints={revealedHints}
+                      revealedOptions={revealedOptions}
+                      timeoutExpired={questionTimer.hasExpired}
                     />
                   )}
                 </motion.div>
@@ -350,6 +377,18 @@ export default function LiveGame() {
           </footer>
         ) : null}
       </main>
+
+      <AnimatePresence>
+        {showQuestionTimer && questionTimer.remainingSeconds !== null ? (
+          <QuestionTimer
+            key={currentQuestion?.id}
+            remainingSeconds={questionTimer.remainingSeconds}
+            progress={questionTimer.progress}
+            paused={questionTimerPaused}
+            expired={questionTimer.hasExpired}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <KeyboardCheatSheet
         open={cheatSheetOpen}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
@@ -9,10 +9,13 @@ import { calculatePotentialPoints } from '../../../utils/liveQuestion';
 interface AnswerSelectionProps {
   question: QuestionWithRelations;
   revealedHints: number;
+  revealedOptions: number;
+  timeoutExpired: boolean;
   onSubmit: (isCorrect: boolean, pointsAwarded: number) => void;
   disabled?: boolean;
   forceSingle?: boolean;
   compact?: boolean;
+  progressiveReveal?: boolean;
 }
 
 interface AnswerTileProps {
@@ -24,6 +27,7 @@ interface AnswerTileProps {
   showLetterBadge: boolean;
   trueFalse: boolean;
   reduceMotion: boolean;
+  goofyEntrance: boolean;
   onToggle: (answerId: number) => void;
 }
 
@@ -42,23 +46,46 @@ function AnswerTile({
   showLetterBadge,
   trueFalse,
   reduceMotion,
+  goofyEntrance,
   onToggle,
 }: AnswerTileProps) {
   const imageUrl = useImageUrl(answer.image_path);
 
   return (
     <motion.button
+      layout={goofyEntrance ? 'position' : undefined}
       type="button"
       onClick={() => onToggle(answer.id)}
       disabled={disabled}
       aria-pressed={selected}
-      initial={reduceMotion ? false : { opacity: 0, y: 26, scale: 0.955 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{
-        delay: reduceMotion ? 0 : 0.18 + index * 0.075,
-        duration: 0.38,
-        ease: [0.22, 0.82, 0.24, 1],
-      }}
+      initial={
+        reduceMotion
+          ? false
+          : goofyEntrance
+            ? {
+                opacity: 0,
+                x: index % 2 === 0 ? 34 : -34,
+                y: -30,
+                scale: 1.26,
+                rotate: index % 2 === 0 ? -15 : 15,
+              }
+            : { opacity: 0, y: 26, scale: 0.955, rotate: 0 }
+      }
+      animate={{ opacity: 1, x: 0, y: 0, scale: 1, rotate: 0 }}
+      transition={
+        goofyEntrance
+          ? {
+              type: 'spring',
+              stiffness: 255,
+              damping: 12,
+              mass: 0.72,
+            }
+          : {
+              delay: reduceMotion ? 0 : 0.18 + index * 0.075,
+              duration: 0.38,
+              ease: [0.22, 0.82, 0.24, 1],
+            }
+      }
       whileHover={disabled ? undefined : { y: -4, scale: 1.018 }}
       whileTap={disabled ? undefined : { scale: 0.992 }}
       className="live-answer-tile group"
@@ -94,21 +121,36 @@ function AnswerTile({
 export function AnswerSelection({
   question,
   revealedHints,
+  revealedOptions,
+  timeoutExpired,
   onSubmit,
   disabled = false,
   forceSingle = false,
   compact = false,
+  progressiveReveal = false,
 }: AnswerSelectionProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const timeoutHandledRef = useRef(false);
   const reduceMotion = Boolean(useReducedMotion());
-  const answers = [...question.answers].sort(
-    (a, b) => a.display_order - b.display_order || a.id - b.id,
+  const answers = useMemo(
+    () =>
+      [...question.answers].sort(
+        (a, b) => a.display_order - b.display_order || a.id - b.id,
+      ),
+    [question.answers],
   );
-  const correctIds = answers
-    .filter((answer) => answer.is_correct)
-    .map((answer) => answer.id);
+  const correctIds = useMemo(
+    () =>
+      answers.filter((answer) => answer.is_correct).map((answer) => answer.id),
+    [answers],
+  );
   const multiple = !forceSingle && correctIds.length > 1;
   const trueFalse = question.question_type === 'true_false';
+  const visibleAnswers = progressiveReveal
+    ? answers.slice(0, Math.max(0, revealedOptions))
+    : answers;
+  const allOptionsRevealed =
+    !progressiveReveal || visibleAnswers.length === answers.length;
 
   const toggleAnswer = (answerId: number) => {
     if (disabled) return;
@@ -120,7 +162,8 @@ export function AnswerSelection({
     });
   };
 
-  const submitSelection = () => {
+  const submitSelection = useCallback(() => {
+    if (disabled) return;
     const selected = new Set(selectedIds);
     const isCorrect =
       selected.size === correctIds.length &&
@@ -129,19 +172,31 @@ export function AnswerSelection({
       isCorrect,
       isCorrect ? calculatePotentialPoints(question, revealedHints) : 0,
     );
-  };
+  }, [correctIds, disabled, onSubmit, question, revealedHints, selectedIds]);
+
+  useEffect(() => {
+    if (!timeoutExpired || timeoutHandledRef.current) return;
+    timeoutHandledRef.current = true;
+    if (selectedIds.length === 0) {
+      onSubmit(false, 0);
+      return;
+    }
+    submitSelection();
+  }, [onSubmit, selectedIds.length, submitSelection, timeoutExpired]);
 
   return (
     <div
       className="live-answer-bank"
       data-compact={compact}
       data-true-false={trueFalse}
+      data-progressive-reveal={progressiveReveal}
+      data-all-options-revealed={allOptionsRevealed}
     >
       <div
         className="live-answer-bank__grid"
         aria-label={multiple ? 'בחירת מספר תשובות' : 'בחירת תשובה אחת'}
       >
-        {answers.map((answer, index) => (
+        {visibleAnswers.map((answer, index) => (
           <AnswerTile
             key={answer.id}
             answer={answer}
@@ -152,19 +207,20 @@ export function AnswerSelection({
             showLetterBadge={!trueFalse}
             trueFalse={trueFalse}
             reduceMotion={reduceMotion}
+            goofyEntrance={progressiveReveal}
             onToggle={toggleAnswer}
           />
         ))}
       </div>
 
       <div className="live-answer-bank__footer">
-        {multiple ? (
+        {multiple && visibleAnswers.length > 0 ? (
           <p className="live-answer-bank__instruction">
             נבחרו {selectedIds.length} תשובות
           </p>
         ) : null}
         <AnimatePresence initial={false}>
-          {selectedIds.length > 0 ? (
+          {selectedIds.length > 0 && allOptionsRevealed ? (
             <motion.button
               type="button"
               onClick={submitSelection}

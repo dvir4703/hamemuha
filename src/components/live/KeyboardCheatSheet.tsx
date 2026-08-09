@@ -38,6 +38,12 @@ const shortcuts: ShortcutRow[] = [
     types: ['complete_sentence', 'association_hints'],
   },
   {
+    keys: ['H', 'י'],
+    action: 'חשיפת אופציה נוספת',
+    context: 'סוג 5',
+    types: ['multiple_options'],
+  },
+  {
     keys: ['כ', 'F', 'V'],
     action: 'סימון תשובה נכונה',
     context: 'תשובה פתוחה',

@@ -7,6 +7,7 @@ interface UseKeyboardOptions {
   enabled: boolean;
   gameActionsEnabled?: boolean;
   hintEnabled?: boolean;
+  optionRevealEnabled?: boolean;
   judgementEnabled?: boolean;
   onExitRequest: () => void;
   onMarkCorrect: () => void;
@@ -30,6 +31,7 @@ export function useKeyboard({
   enabled,
   gameActionsEnabled = true,
   hintEnabled = true,
+  optionRevealEnabled = false,
   judgementEnabled = true,
   onExitRequest,
   onMarkCorrect,
@@ -40,6 +42,7 @@ export function useKeyboard({
   const previousQuestion = useLiveStore((state) => state.previousQuestion);
   const togglePause = useLiveStore((state) => state.togglePause);
   const revealNextHint = useLiveStore((state) => state.revealNextHint);
+  const revealNextOption = useLiveStore((state) => state.revealNextOption);
 
   useEffect(() => {
     if (!enabled) return;
@@ -90,8 +93,15 @@ export function useKeyboard({
           return;
       }
 
-      if (hintEnabled && (normalizedKey === 'h' || event.key === 'י')) {
+      if (
+        (hintEnabled || optionRevealEnabled) &&
+        (normalizedKey === 'h' || event.key === 'י')
+      ) {
         event.preventDefault();
+        if (optionRevealEnabled) {
+          revealNextOption();
+          return;
+        }
         const previousHintCount =
           useLiveStore.getState().revealedHintsForCurrentQuestion;
         revealNextHint();
@@ -123,6 +133,7 @@ export function useKeyboard({
     enabled,
     gameActionsEnabled,
     hintEnabled,
+    optionRevealEnabled,
     judgementEnabled,
     jumpToContestant,
     nextQuestion,
@@ -131,6 +142,7 @@ export function useKeyboard({
     onMarkWrong,
     previousQuestion,
     revealNextHint,
+    revealNextOption,
     togglePause,
   ]);
 }

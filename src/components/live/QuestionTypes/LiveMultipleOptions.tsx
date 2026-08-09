@@ -13,7 +13,7 @@ export function LiveMultipleOptions(props: LiveQuestionTypeProps) {
         imagePath={props.question.image_path}
         title={props.question.question_text}
       />
-      <AnswerSelection {...props} />
+      <AnswerSelection {...props} progressiveReveal />
     </section>
   );
 }

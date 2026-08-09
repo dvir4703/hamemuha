@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -29,47 +30,64 @@ function normalizeAnswer(value: string): string {
 export function LiveCompleteSentence({
   question,
   revealedHints,
+  timeoutExpired,
   onSubmit,
   disabled = false,
 }: LiveQuestionTypeProps) {
   const shouldReduceMotion = useReducedMotion();
   const correctAnswer = question.correct_answer_text ?? '';
-  const characters = Array.from(correctAnswer);
-  const editablePositions = characters
-    .map((character, index) => ({ character, index }))
-    .filter(({ character }) => !/\s/u.test(character))
-    .map(({ index }) => index);
-  const activeHints = getOrderedHints(question).slice(0, revealedHints);
-  const activeLetterHints = activeHints.filter(
-    (hint) => hint.hint_type === 'letter_reveal',
+  const characters = useMemo(() => Array.from(correctAnswer), [correctAnswer]);
+  const editablePositions = useMemo(
+    () =>
+      characters
+        .map((character, index) => ({ character, index }))
+        .filter(({ character }) => !/\s/u.test(character))
+        .map(({ index }) => index),
+    [characters],
   );
-  const revealedPositions = new Set<number>();
+  const activeHints = useMemo(
+    () => getOrderedHints(question).slice(0, revealedHints),
+    [question, revealedHints],
+  );
+  const activeLetterHints = useMemo(
+    () => activeHints.filter((hint) => hint.hint_type === 'letter_reveal'),
+    [activeHints],
+  );
+  const revealedPositions = useMemo(() => {
+    const positions = new Set<number>();
 
-  for (const hint of activeLetterHints) {
-    const selectedPosition = parseRevealPosition(hint.hint_text);
-    if (
-      selectedPosition !== null &&
-      editablePositions.includes(selectedPosition)
-    ) {
-      revealedPositions.add(selectedPosition);
-      continue;
+    for (const hint of activeLetterHints) {
+      const selectedPosition = parseRevealPosition(hint.hint_text);
+      if (
+        selectedPosition !== null &&
+        editablePositions.includes(selectedPosition)
+      ) {
+        positions.add(selectedPosition);
+        continue;
+      }
+
+      const legacyCharacter = hint.hint_text?.trim() ?? '';
+      if (isSingleRevealCharacter(legacyCharacter)) {
+        const legacyPosition = editablePositions.find(
+          (position) =>
+            !positions.has(position) &&
+            normalizeRevealCharacter(characters[position]) ===
+              normalizeRevealCharacter(legacyCharacter),
+        );
+        if (legacyPosition !== undefined) positions.add(legacyPosition);
+      }
     }
 
-    const legacyCharacter = hint.hint_text?.trim() ?? '';
-    if (isSingleRevealCharacter(legacyCharacter)) {
-      const legacyPosition = editablePositions.find(
-        (position) =>
-          !revealedPositions.has(position) &&
-          normalizeRevealCharacter(characters[position]) ===
-            normalizeRevealCharacter(legacyCharacter),
-      );
-      if (legacyPosition !== undefined) revealedPositions.add(legacyPosition);
-    }
-  }
-  const textHints = activeHints.filter((hint) => hint.hint_type === 'text');
+    return positions;
+  }, [activeLetterHints, characters, editablePositions]);
+  const textHints = useMemo(
+    () => activeHints.filter((hint) => hint.hint_type === 'text'),
+    [activeHints],
+  );
   const [values, setValues] = useState<string[]>(() =>
     characters.map(() => ''),
   );
+  const timeoutHandledRef = useRef(false);
   const inputRefs = useRef(new Map<number, HTMLInputElement>());
 
   const focusPosition = (position: number | undefined) => {
@@ -153,7 +171,11 @@ export function LiveCompleteSentence({
     if (!isComplete || disabled) return;
     const submittedAnswer = characters
       .map((character, index) =>
-        /\s/u.test(character) ? character : displayedCharacterAt(index),
+        /\s/u.test(character)
+          ? character
+          : revealedPositions.has(index)
+            ? characters[index]
+            : values[index],
       )
       .join('');
     const isCorrect =
@@ -163,6 +185,42 @@ export function LiveCompleteSentence({
       isCorrect ? calculatePotentialPoints(question, revealedHints) : 0,
     );
   };
+
+  useEffect(() => {
+    if (disabled || !timeoutExpired || timeoutHandledRef.current) return;
+    timeoutHandledRef.current = true;
+
+    if (!values.some(Boolean)) {
+      onSubmit(false, 0);
+      return;
+    }
+
+    const submittedAnswer = characters
+      .map((character, index) =>
+        /\s/u.test(character)
+          ? character
+          : revealedPositions.has(index)
+            ? characters[index]
+            : values[index],
+      )
+      .join('');
+    const isCorrect =
+      normalizeAnswer(submittedAnswer) === normalizeAnswer(correctAnswer);
+    onSubmit(
+      isCorrect,
+      isCorrect ? calculatePotentialPoints(question, revealedHints) : 0,
+    );
+  }, [
+    characters,
+    correctAnswer,
+    disabled,
+    onSubmit,
+    question,
+    revealedHints,
+    revealedPositions,
+    timeoutExpired,
+    values,
+  ]);
 
   return (
     <section
