@@ -35,13 +35,21 @@ export function LiveAssociationHints(props: LiveQuestionTypeProps) {
                 initial={
                   index === 0 || shouldReduceMotion
                     ? false
-                    : { opacity: 0, y: 24, scale: 0.95 }
+                    : {
+                        opacity: 0,
+                        x: index % 2 === 0 ? 52 : -52,
+                        y: -16,
+                        scale: 1.16,
+                        rotate: index % 2 === 0 ? -9 : 9,
+                      }
                 }
-                animate={{ opacity: 1, y: 0, scale: 1 }}
+                animate={{ opacity: 1, x: 0, y: 0, scale: 1, rotate: 0 }}
                 exit={{ opacity: 0, y: -12, scale: 0.98 }}
                 transition={{
-                  duration: 0.36,
-                  ease: [0.22, 0.82, 0.24, 1],
+                  type: 'spring',
+                  stiffness: 190,
+                  damping: 12,
+                  mass: 0.86,
                 }}
                 className="live-hint-card"
                 data-primary={index === 0}

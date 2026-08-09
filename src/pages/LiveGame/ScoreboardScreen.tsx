@@ -10,8 +10,10 @@ import {
   Trophy,
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Howl } from 'howler';
 
 import companyLogo from '../../assets/images/company-logo.png';
+import scoreboardSoundUrl from '../../assets/sounds/scoreboard.mp3?url';
 import { Toast } from '../../components/ui/Toast';
 import type { ContestantLiveStats } from '../../store/liveStore';
 import '../../styles/live-results.css';
@@ -94,6 +96,22 @@ export function ScoreboardScreen({
   const winnerRevealDelayMs =
     SCOREBOARD_REVEAL_LEAD_MS +
     Math.max(entries.length - 1, 0) * SCOREBOARD_ROW_STAGGER_MS;
+
+  useEffect(() => {
+    const sound = new Howl({
+      src: [scoreboardSoundUrl],
+      volume: 0.66,
+      preload: true,
+      pool: 1,
+    });
+    const activationTimer = window.setTimeout(() => sound.play(), 0);
+
+    return () => {
+      window.clearTimeout(activationTimer);
+      sound.stop();
+      sound.unload();
+    };
+  }, []);
 
   useEffect(() => {
     const timeout = window.setTimeout(

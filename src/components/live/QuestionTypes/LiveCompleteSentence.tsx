@@ -18,6 +18,7 @@ import {
   normalizeRevealCharacter,
   parseRevealPosition,
 } from '../../../utils/letterReveal';
+import { playLetterTypeSound } from '../../../utils/liveSounds';
 import { LiveQuestionHeader } from './LiveQuestionHeader';
 import type { LiveQuestionTypeProps } from './types';
 
@@ -116,6 +117,7 @@ export function LiveCompleteSentence({
     event: ChangeEvent<HTMLInputElement>,
   ) => {
     const nextValue = Array.from(event.currentTarget.value).at(-1) ?? '';
+    if (nextValue && nextValue !== values[position]) playLetterTypeSound();
     setValues((current) => {
       const next = [...current];
       next[position] = nextValue;
@@ -194,7 +196,7 @@ export function LiveCompleteSentence({
               const displayedCharacter = displayedCharacterAt(position);
               return (
                 <motion.input
-                  key={position}
+                  key={`${position}-${isRevealed ? 'revealed' : 'editable'}`}
                   ref={(element) => {
                     if (element) inputRefs.current.set(position, element);
                     else inputRefs.current.delete(position);
@@ -213,14 +215,32 @@ export function LiveCompleteSentence({
                   initial={
                     shouldReduceMotion
                       ? false
-                      : { opacity: 0, y: 18, scale: 0.9 }
+                      : isRevealed
+                        ? {
+                            opacity: 0,
+                            y: -26,
+                            scale: 1.42,
+                            rotate: position % 2 === 0 ? -24 : 24,
+                          }
+                        : { opacity: 0, y: 18, scale: 0.9, rotate: 0 }
                   }
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{
-                    delay: shouldReduceMotion ? 0 : 0.2 + position * 0.035,
-                    duration: 0.32,
-                    ease: [0.22, 0.82, 0.24, 1],
-                  }}
+                  animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+                  transition={
+                    isRevealed
+                      ? {
+                          type: 'spring',
+                          stiffness: 410,
+                          damping: 11,
+                          mass: 0.56,
+                        }
+                      : {
+                          delay: shouldReduceMotion
+                            ? 0
+                            : 0.2 + position * 0.035,
+                          duration: 0.32,
+                          ease: [0.22, 0.82, 0.24, 1],
+                        }
+                  }
                   className="live-letter-board__tile"
                 />
               );
@@ -237,13 +257,21 @@ export function LiveCompleteSentence({
                     initial={
                       shouldReduceMotion
                         ? false
-                        : { opacity: 0, y: 20, scale: 0.97 }
+                        : {
+                            opacity: 0,
+                            x: index % 2 === 0 ? 52 : -52,
+                            y: -16,
+                            scale: 1.16,
+                            rotate: index % 2 === 0 ? -9 : 9,
+                          }
                     }
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    animate={{ opacity: 1, x: 0, y: 0, scale: 1, rotate: 0 }}
                     exit={{ opacity: 0, y: -10, scale: 0.98 }}
                     transition={{
-                      delay: shouldReduceMotion ? 0 : index * 0.06,
-                      duration: 0.32,
+                      type: 'spring',
+                      stiffness: 190,
+                      damping: 12,
+                      mass: 0.86,
                     }}
                     className="live-text-hint"
                   >

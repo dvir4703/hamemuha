@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
 import { useLiveStore } from '../store/liveStore';
+import { playHintSound } from '../utils/liveSounds';
 
 interface UseKeyboardOptions {
   enabled: boolean;
@@ -91,7 +92,12 @@ export function useKeyboard({
 
       if (hintEnabled && (normalizedKey === 'h' || event.key === 'י')) {
         event.preventDefault();
+        const previousHintCount =
+          useLiveStore.getState().revealedHintsForCurrentQuestion;
         revealNextHint();
+        const nextHintCount =
+          useLiveStore.getState().revealedHintsForCurrentQuestion;
+        if (nextHintCount > previousHintCount) playHintSound();
         return;
       }
       if (

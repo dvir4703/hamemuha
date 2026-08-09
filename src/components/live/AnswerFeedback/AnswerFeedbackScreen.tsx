@@ -10,7 +10,6 @@ import type { QuestionWithRelations } from '../../../types';
 import { CorrectAnswerScreen } from './CorrectAnswerScreen';
 import { WrongAnswerScreen } from './WrongAnswerScreen';
 
-// TODO: replace correct.mp3 and wrong.mp3 with real sound files.
 export const CORRECT_FEEDBACK_AUTO_ADVANCE_MS = 5600;
 
 const handledSubmissions = new Set<number>();
@@ -43,8 +42,9 @@ export function AnswerFeedbackScreen({
 
       sound = new Howl({
         src: [result.isCorrect ? correctSoundUrl : wrongSoundUrl],
-        volume: result.isCorrect ? 0.42 : 0.28,
-        html5: true,
+        volume: result.isCorrect ? 0.68 : 0.62,
+        preload: true,
+        pool: 1,
         onloaderror: () => undefined,
         onplayerror: () => undefined,
       });
@@ -139,20 +139,21 @@ export function AnswerFeedbackScreen({
       }
     }, 0);
 
-    const autoAdvanceTimer =
-      result.isCorrect && !paused
-        ? window.setTimeout(nextQuestion, CORRECT_FEEDBACK_AUTO_ADVANCE_MS)
-        : undefined;
-
     return () => {
       window.clearTimeout(activationTimer);
       confettiTimers.forEach((timer) => window.clearTimeout(timer));
-      if (autoAdvanceTimer !== undefined) {
-        window.clearTimeout(autoAdvanceTimer);
-      }
       sound?.stop();
       sound?.unload();
     };
+  }, [result.isCorrect, result.submissionId]);
+
+  useEffect(() => {
+    if (!result.isCorrect || paused) return;
+    const autoAdvanceTimer = window.setTimeout(
+      nextQuestion,
+      CORRECT_FEEDBACK_AUTO_ADVANCE_MS,
+    );
+    return () => window.clearTimeout(autoAdvanceTimer);
   }, [nextQuestion, paused, result.isCorrect, result.submissionId]);
 
   return result.isCorrect ? (
