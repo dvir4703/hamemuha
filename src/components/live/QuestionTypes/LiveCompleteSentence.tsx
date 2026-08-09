@@ -14,8 +14,9 @@ import {
   getOrderedHints,
 } from '../../../utils/liveQuestion';
 import {
-  getRevealCharacterPositions,
   isSingleRevealCharacter,
+  normalizeRevealCharacter,
+  parseRevealPosition,
 } from '../../../utils/letterReveal';
 import { LiveQuestionHeader } from './LiveQuestionHeader';
 import type { LiveQuestionTypeProps } from './types';
@@ -44,16 +45,22 @@ export function LiveCompleteSentence({
   const revealedPositions = new Set<number>();
 
   for (const hint of activeLetterHints) {
-    const selectedCharacter = hint.hint_text?.trim() ?? '';
-    if (isSingleRevealCharacter(selectedCharacter)) {
-      for (const position of getRevealCharacterPositions(correctAnswer, [
-        selectedCharacter,
-      ])) {
-        revealedPositions.add(position);
-      }
-    } else {
+    const selectedPosition = parseRevealPosition(hint.hint_text);
+    if (
+      selectedPosition !== null &&
+      editablePositions.includes(selectedPosition)
+    ) {
+      revealedPositions.add(selectedPosition);
+      continue;
+    }
+
+    const legacyCharacter = hint.hint_text?.trim() ?? '';
+    if (isSingleRevealCharacter(legacyCharacter)) {
       const legacyPosition = editablePositions.find(
-        (position) => !revealedPositions.has(position),
+        (position) =>
+          !revealedPositions.has(position) &&
+          normalizeRevealCharacter(characters[position]) ===
+            normalizeRevealCharacter(legacyCharacter),
       );
       if (legacyPosition !== undefined) revealedPositions.add(legacyPosition);
     }

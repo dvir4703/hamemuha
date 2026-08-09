@@ -1,8 +1,8 @@
 import { Eye, Lightbulb, Plus, Trash2 } from 'lucide-react';
 
 import {
-  getUniqueRevealCharacters,
-  normalizeRevealCharacter,
+  getRevealablePositions,
+  parseRevealPosition,
 } from '../../../utils/letterReveal';
 import type { FieldErrors, HintDraft } from './types';
 import { createHintDraft } from './types';
@@ -22,7 +22,8 @@ export function CompleteSentenceFields({
   onCorrectAnswerChange,
   onHintsChange,
 }: CompleteSentenceFieldsProps) {
-  const revealCharacters = getUniqueRevealCharacters(correctAnswerText);
+  const answerCharacters = Array.from(correctAnswerText.trim());
+  const revealPositions = getRevealablePositions(correctAnswerText);
 
   const updateHint = (key: string, changes: Partial<HintDraft>) => {
     onHintsChange(
@@ -31,15 +32,14 @@ export function CompleteSentenceFields({
   };
 
   const handleCorrectAnswerChange = (value: string) => {
-    const availableCharacters = new Set(
-      getUniqueRevealCharacters(value).map(normalizeRevealCharacter),
-    );
+    const availablePositions = new Set(getRevealablePositions(value));
     let clearedInvalidSelection = false;
     const nextHints = hints.map((hint) => {
+      const selectedPosition = parseRevealPosition(hint.hintText);
       if (
         hint.hintType !== 'letter_reveal' ||
         !hint.hintText ||
-        availableCharacters.has(normalizeRevealCharacter(hint.hintText))
+        (selectedPosition !== null && availablePositions.has(selectedPosition))
       ) {
         return hint;
       }
@@ -184,38 +184,53 @@ export function CompleteSentenceFields({
               ) : (
                 <div className="mt-3">
                   <span className="mb-2 block text-xs font-bold text-ink/50">
-                    איזו אות תיחשף?
+                    איזה מיקום ייחשף?
                   </span>
-                  {revealCharacters.length > 0 ? (
+                  {revealPositions.length > 0 ? (
                     <div
-                      className="flex flex-wrap gap-2"
+                      className="flex flex-wrap items-end gap-1.5"
+                      dir="rtl"
                       role="group"
-                      aria-label={`בחירת אות לרמז ${index + 1}`}
+                      aria-label={`בחירת מיקום אות לרמז ${index + 1}`}
                     >
-                      {revealCharacters.map((character) => {
-                        const normalizedCharacter =
-                          normalizeRevealCharacter(character);
-                        const isSelected =
-                          normalizeRevealCharacter(hint.hintText) ===
-                          normalizedCharacter;
+                      {answerCharacters.map((character, position) => {
+                        if (/\s/u.test(character)) {
+                          return (
+                            <span
+                              key={`space-${position}`}
+                              className="w-3"
+                              aria-hidden="true"
+                            />
+                          );
+                        }
+
+                        const selectedPosition = parseRevealPosition(
+                          hint.hintText,
+                        );
+                        const isSelected = selectedPosition === position;
                         const isSelectedElsewhere = hints.some(
                           (otherHint) =>
                             otherHint.key !== hint.key &&
                             otherHint.hintType === 'letter_reveal' &&
-                            normalizeRevealCharacter(otherHint.hintText) ===
-                              normalizedCharacter,
+                            parseRevealPosition(otherHint.hintText) ===
+                              position,
                         );
+                        const answerPosition =
+                          revealPositions.indexOf(position) + 1;
 
                         return (
                           <button
-                            key={normalizedCharacter}
+                            key={`${position}-${character}`}
                             type="button"
                             disabled={isSelectedElsewhere && !isSelected}
                             aria-pressed={isSelected}
+                            aria-label={`בחירת ${character}, אות ${answerPosition} בתשובה`}
                             onClick={() =>
-                              updateHint(hint.key, { hintText: character })
+                              updateHint(hint.key, {
+                                hintText: String(position),
+                              })
                             }
-                            className={`grid h-10 min-w-10 place-items-center rounded-xl border px-3 font-display text-lg font-black transition ${
+                            className={`grid min-h-12 min-w-11 place-items-center rounded-xl border px-2 py-1 font-display transition ${
                               isSelected
                                 ? 'border-violet bg-violet text-white shadow-sm'
                                 : isSelectedElsewhere
@@ -223,7 +238,12 @@ export function CompleteSentenceFields({
                                   : 'border-violet/20 bg-white text-violet hover:border-violet/55 hover:bg-violet/5'
                             }`}
                           >
-                            {character}
+                            <span className="text-lg font-black leading-none">
+                              {character}
+                            </span>
+                            <span className="text-[10px] font-bold leading-none opacity-60">
+                              {answerPosition}
+                            </span>
                           </button>
                         );
                       })}
@@ -234,8 +254,8 @@ export function CompleteSentenceFields({
                     </p>
                   )}
                   <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-violet">
-                    <Eye size={15} /> בלייב ייחשפו יחד כל המופעים של האות
-                    שנבחרה.
+                    <Eye size={15} /> כל רמז חושף תיבה אחת בלבד. המיקום נשמר גם
+                    כשאות זהה מופיעה יותר מפעם אחת.
                   </p>
                 </div>
               )}

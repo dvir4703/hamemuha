@@ -108,7 +108,7 @@ export function CreateQuizModal({ onClose, onCreate }: CreateQuizModalProps) {
               value={name}
               onChange={(event) => setName(event.target.value)}
               className="w-full rounded-2xl border border-ink/15 bg-white px-4 py-3.5 text-lg text-ink outline-none transition placeholder:text-ink/35 focus:border-teal focus:ring-4 focus:ring-teal/10"
-              placeholder="למשל: חידון תנ״ך — כיתה ו׳"
+              placeholder="למשל: חידון תנ״ך - כיתה ו׳"
               maxLength={120}
               required
             />

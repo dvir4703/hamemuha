@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 
-import companyLogo from '../../assets/images/company-logo.jpeg';
+import companyLogo from '../../assets/images/company-logo.png';
 import { Toast } from '../../components/ui/Toast';
 import type { ContestantLiveStats } from '../../store/liveStore';
 import '../../styles/live-results.css';
@@ -234,7 +234,7 @@ export function ScoreboardScreen({
           >
             <img
               src={companyLogo}
-              alt="החידון והחוויה — בניהולו של יואב שלומברג"
+              alt="המומחה"
               className="live-scoreboard__logo"
             />
             <div className="live-scoreboard__title-block">

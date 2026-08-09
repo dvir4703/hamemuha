@@ -111,7 +111,7 @@ export function LiveConfirmationDialog({
 
             <h2
               id="live-confirmation-title"
-              className="mt-5 font-display text-3xl font-black"
+              className="mt-5 font-display text-3xl font-extrabold"
             >
               {title}
             </h2>
@@ -136,7 +136,7 @@ export function LiveConfirmationDialog({
                 type="button"
                 onClick={onConfirm}
                 disabled={isBusy}
-                className="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl border border-[#ffe08a]/45 bg-gradient-to-r from-[#d58d18] via-[#f4b942] to-[#ffe08a] px-5 py-3 font-black text-[#050713] shadow-[0_12px_32px_rgba(244,185,66,0.22)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4b942]/25 disabled:opacity-45"
+                className="inline-flex min-w-40 items-center justify-center gap-2 rounded-xl border border-[#ffe08a]/45 bg-gradient-to-r from-[#d58d18] via-[#f4b942] to-[#ffe08a] px-5 py-3 font-extrabold text-[#050713] shadow-[0_12px_32px_rgba(244,185,66,0.22)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4b942]/25 disabled:opacity-45"
               >
                 {isBusy ? (
                   <LoaderCircle className="animate-spin" size={18} />

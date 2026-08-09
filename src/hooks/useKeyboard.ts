@@ -4,6 +4,7 @@ import { useLiveStore } from '../store/liveStore';
 
 interface UseKeyboardOptions {
   enabled: boolean;
+  gameActionsEnabled?: boolean;
   hintEnabled?: boolean;
   judgementEnabled?: boolean;
   onExitRequest: () => void;
@@ -26,6 +27,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export function useKeyboard({
   enabled,
+  gameActionsEnabled = true,
   hintEnabled = true,
   judgementEnabled = true,
   onExitRequest,
@@ -54,6 +56,17 @@ export function useKeyboard({
 
       const normalizedKey = event.key.toLowerCase();
 
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onExitRequest();
+        return;
+      }
+
+      if (!gameActionsEnabled) {
+        event.preventDefault();
+        return;
+      }
+
       if (/^[1-9]$/.test(event.key)) {
         event.preventDefault();
         jumpToContestant(Number(event.key));
@@ -73,10 +86,6 @@ export function useKeyboard({
         case 'Spacebar':
           event.preventDefault();
           togglePause();
-          return;
-        case 'Escape':
-          event.preventDefault();
-          onExitRequest();
           return;
       }
 
@@ -106,6 +115,7 @@ export function useKeyboard({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     enabled,
+    gameActionsEnabled,
     hintEnabled,
     judgementEnabled,
     jumpToContestant,

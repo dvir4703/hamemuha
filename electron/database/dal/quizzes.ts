@@ -49,15 +49,17 @@ function escapeLikeValue(value: string): string {
 
 function getNextCopyName(sourceName: string): string {
   const database = getDatabase();
-  const copyMatch = sourceName.match(/^(.*)\s+—\s+עותק(?:\s+(\d+))?$/);
+  const copyMatch = sourceName.match(
+    /^(.*)\s+(?:\u2014|-)\s+עותק(?:\s+(\d+))?$/,
+  );
   const baseName = copyMatch?.[1]?.trim() || sourceName;
   let copyNumber = copyMatch ? Number(copyMatch[2] ?? 1) + 1 : 1;
 
   while (true) {
     const candidate =
       copyNumber === 1
-        ? `${baseName} — עותק`
-        : `${baseName} — עותק ${copyNumber}`;
+        ? `${baseName} - עותק`
+        : `${baseName} - עותק ${copyNumber}`;
     const existing = database
       .prepare('SELECT id FROM quizzes WHERE name = ? LIMIT 1')
       .get(candidate);

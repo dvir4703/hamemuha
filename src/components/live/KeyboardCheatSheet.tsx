@@ -27,7 +27,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
 };
 
 const shortcuts: ShortcutRow[] = [
-  { keys: ['1–9'], action: 'קפיצה למתמודד', context: 'במהלך המשחק' },
+  { keys: ['1-9'], action: 'קפיצה למתמודד', context: 'במהלך המשחק' },
   { keys: ['→'], action: 'השאלה הבאה', context: 'גם בזמן משוב' },
   { keys: ['←'], action: 'השאלה הקודמת', context: 'במהלך המשחק' },
   { keys: ['Space'], action: 'השהיה / המשך', context: 'במהלך המשחק' },
@@ -140,7 +140,7 @@ export function KeyboardCheatSheet({
                   <p className="live-keyboard__eyebrow">דף עזר למנחה</p>
                   <h2
                     id="keyboard-cheat-sheet-title"
-                    className="mt-1 font-display text-3xl font-black text-white sm:text-4xl"
+                    className="mt-1 font-display text-3xl font-extrabold text-white sm:text-4xl"
                   >
                     קיצורי מקלדת בלייב
                   </h2>

@@ -26,8 +26,8 @@ function AnimatedPoints({ points }: { points: number }) {
     }
 
     const controls = animate(0, points, {
-      delay: 0.34,
-      duration: 0.82,
+      delay: 0.55,
+      duration: 1.15,
       ease: [0.16, 1, 0.3, 1],
       onUpdate: (value) => setDisplayedPoints(Math.round(value)),
     });
@@ -71,9 +71,9 @@ export function CorrectAnswerScreen({
         animate={{ opacity: 1, scale: 1, rotate: 0, y: 0 }}
         transition={{
           type: 'spring',
-          stiffness: 280,
-          damping: 15,
-          mass: 0.82,
+          stiffness: 150,
+          damping: 18,
+          mass: 1.05,
         }}
         className="live-feedback__victory-seal"
         aria-hidden="true"
@@ -97,10 +97,10 @@ export function CorrectAnswerScreen({
         }
         animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
         transition={{
-          delay: shouldReduceMotion ? 0 : 0.12,
+          delay: shouldReduceMotion ? 0 : 0.28,
           type: 'spring',
-          stiffness: 250,
-          damping: 17,
+          stiffness: 155,
+          damping: 20,
         }}
         className="live-feedback__headline"
       >
@@ -113,10 +113,10 @@ export function CorrectAnswerScreen({
         }
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{
-          delay: shouldReduceMotion ? 0 : 0.26,
+          delay: shouldReduceMotion ? 0 : 0.55,
           type: 'spring',
-          stiffness: 235,
-          damping: 16,
+          stiffness: 165,
+          damping: 19,
         }}
         className="live-feedback__points"
         aria-label={`קיבלתם ${pointsAwarded} נקודות`}
@@ -133,8 +133,8 @@ export function CorrectAnswerScreen({
           }
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{
-            delay: shouldReduceMotion ? 0 : 0.56,
-            duration: 0.42,
+            delay: shouldReduceMotion ? 0 : 0.95,
+            duration: 0.58,
             ease: [0.22, 0.82, 0.24, 1],
           }}
           className="live-feedback__explanation"

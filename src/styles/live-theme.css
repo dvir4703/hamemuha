@@ -28,6 +28,29 @@
   font-family: 'Assistant Variable', Arial, sans-serif;
 }
 
+.live-intro-video {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+}
+
+.live-intro-video__media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  pointer-events: none;
+  user-select: none;
+}
+
 .live-stage,
 .live-opening {
   isolation: isolate;
@@ -306,13 +329,50 @@
   pointer-events: none;
 }
 
+.live-opening__light-sweep {
+  position: absolute;
+  inset: -42%;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg 42deg,
+    rgba(255, 224, 138, 0.12) 56deg,
+    transparent 70deg 178deg,
+    rgba(91, 79, 205, 0.18) 194deg,
+    transparent 212deg 360deg
+  );
+  filter: blur(18px);
+  opacity: 0.72;
+  animation: live-opening-sweep 18s linear infinite;
+  pointer-events: none;
+}
+
+.live-opening__light-pulse {
+  position: absolute;
+  inset: 8% 10%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 224, 138, 0.16),
+    rgba(87, 73, 196, 0.08) 34%,
+    transparent 70%
+  );
+  filter: blur(20px);
+  animation: live-opening-pulse 6.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
 .live-opening__logo {
-  border: 1px solid rgba(255, 224, 138, 0.3);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 22px 70px rgba(0, 0, 0, 0.42),
-    0 0 44px rgba(244, 185, 66, 0.12);
-  backdrop-filter: blur(16px);
+  width: min(48rem, 88vw);
+  height: auto;
+  aspect-ratio: 4.3;
+  overflow: hidden;
+}
+
+.live-opening__logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .live-opening__title {
@@ -322,6 +382,15 @@
   text-shadow:
     0 4px 34px rgba(0, 0, 0, 0.7),
     0 0 46px rgba(244, 185, 66, 0.12);
+}
+
+.live-opening__tagline {
+  margin: clamp(0.8rem, 1.8vh, 1.25rem) 0 0;
+  color: rgba(255, 224, 138, 0.82);
+  font-size: clamp(1.15rem, 2.1vw, 1.75rem);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 24px rgba(244, 185, 66, 0.22);
 }
 
 .live-opening__title-accent {
@@ -536,7 +605,7 @@
   color: var(--live-ice);
   font-family: 'Rubik Variable', Arial, sans-serif;
   font-size: clamp(2.3rem, 4.2vw, 4rem);
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1.08;
   text-wrap: balance;
@@ -709,7 +778,7 @@
   color: var(--live-answer-badge-text);
   font-family: 'Rubik Variable', Arial, sans-serif;
   font-size: 1.3rem;
-  font-weight: 900;
+  font-weight: 800;
   box-shadow:
     0 0 0 4px rgba(244, 185, 66, 0.07),
     0 0 24px rgba(244, 185, 66, 0.22);
@@ -843,7 +912,7 @@
   color: var(--live-answer-badge-text);
   font-family: 'Rubik Variable', Arial, sans-serif;
   font-size: 1.15rem;
-  font-weight: 900;
+  font-weight: 800;
   box-shadow:
     0 12px 30px rgba(244, 185, 66, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.58);
@@ -884,7 +953,7 @@
   caret-color: var(--live-spotlight);
   font-family: 'Rubik Variable', Arial, sans-serif;
   font-size: clamp(2rem, 4vw, 3.2rem);
-  font-weight: 900;
+  font-weight: 800;
   text-align: center;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
   box-shadow:
@@ -1097,7 +1166,7 @@
   color: var(--live-spotlight);
   font-family: 'Rubik Variable', Arial, sans-serif;
   font-size: 1.2rem;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .live-question__prompt-bar span {
@@ -1175,7 +1244,7 @@
   background: rgba(244, 185, 66, 0.1);
   color: var(--live-spotlight);
   font-family: 'Rubik Variable', Arial, sans-serif;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .live-hint-card[data-primary='true'] .live-hint-card__number {
@@ -1377,6 +1446,24 @@
   }
 }
 
+@keyframes live-opening-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes live-opening-pulse {
+  0%,
+  100% {
+    opacity: 0.34;
+    transform: scale(0.88);
+  }
+  50% {
+    opacity: 0.82;
+    transform: scale(1.08);
+  }
+}
+
 @keyframes live-start-glint {
   0%,
   52% {
@@ -1506,6 +1593,8 @@
   .live-stage__score::before,
   .live-opening__orbit,
   .live-opening__particles,
+  .live-opening__light-sweep,
+  .live-opening__light-pulse,
   .live-opening__start::after {
     animation: none;
   }
@@ -1540,16 +1629,16 @@
   position: relative;
   z-index: 20;
   display: grid;
-  min-width: 8rem;
+  min-width: 12rem;
   place-items: center;
   align-self: center;
-  padding: 0.05rem 2.5rem 0.2rem;
+  padding: 0.1rem 3rem 0.35rem;
   color: var(--live-ice);
   text-align: center;
 }
 
 .live-stage__score-hud::after {
-  width: min(13rem, 22vw);
+  width: min(18rem, 30vw);
   height: 1px;
   margin-top: 0.15rem;
   background: linear-gradient(
@@ -1563,8 +1652,8 @@
 }
 
 .live-stage__score-hud span {
-  color: rgba(246, 247, 255, 0.48);
-  font-size: 0.72rem;
+  color: rgba(246, 247, 255, 0.62);
+  font-size: clamp(0.9rem, 1.8vh, 1.3rem);
   font-weight: 850;
   letter-spacing: 0.12em;
 }
@@ -1572,9 +1661,9 @@
 .live-stage__score-hud strong {
   color: var(--live-spotlight);
   font-family: 'Rubik Variable', Arial, sans-serif;
-  font-size: clamp(2.2rem, 4.6vh, 3.6rem);
+  font-size: clamp(4.25rem, 10vh, 7.5rem);
   font-variant-numeric: tabular-nums;
-  font-weight: 950;
+  font-weight: 800;
   letter-spacing: -0.055em;
   line-height: 0.95;
   text-shadow:
@@ -1632,7 +1721,7 @@
   color: var(--live-ice);
   font-family: 'Rubik Variable', Arial, sans-serif;
   font-size: clamp(3.2rem, 7vw, 7rem);
-  font-weight: 950;
+  font-weight: 800;
   letter-spacing: -0.055em;
   line-height: 1;
   text-wrap: balance;
@@ -1684,7 +1773,7 @@
   border-radius: 50%;
   color: var(--live-spotlight);
   font-family: 'Rubik Variable', Arial, sans-serif;
-  font-weight: 950;
+  font-weight: 800;
 }
 
 .live-stage__contestant-hud strong {
@@ -1712,19 +1801,7 @@
   box-shadow: none;
 }
 
-.live-question-shell::before {
-  top: 12%;
-  width: min(76rem, 92vw);
-  height: 64%;
-  border: 0;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(65, 61, 157, 0.16),
-    transparent 66%
-  );
-  box-shadow: none;
-}
-
+.live-question-shell::before,
 .live-question-shell::after {
   display: none;
 }
@@ -1741,8 +1818,8 @@
   border: 0;
   background: transparent;
   padding: 0;
-  color: rgba(255, 224, 138, 0.66);
-  font-size: 0.82rem;
+  color: rgba(255, 224, 138, 0.82);
+  font-size: clamp(1rem, 1.8vh, 1.35rem);
   letter-spacing: 0.06em;
   box-shadow: none;
 }
@@ -1859,7 +1936,7 @@
 .live-opening__logo {
   border: 0;
   background: transparent;
-  box-shadow: 0 0 52px rgba(244, 185, 66, 0.14);
+  box-shadow: none;
   backdrop-filter: none;
 }
 

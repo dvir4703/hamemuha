@@ -9,9 +9,8 @@ import type {
   QuestionWithRelations,
 } from '../../../src/types';
 import {
-  getUniqueRevealCharacters,
-  isSingleRevealCharacter,
-  normalizeRevealCharacter,
+  getRevealablePositions,
+  parseRevealPosition,
 } from '../../../src/utils/letterReveal';
 import { getDatabase } from '../connection';
 import {
@@ -67,34 +66,31 @@ function validateHints(
   if (requireOne && hints.length === 0) {
     throw new Error('יש להוסיף לפחות רמז אחד.');
   }
-  const availableCharacters =
+  const availablePositions =
     correctAnswerText === undefined
       ? null
-      : new Set(
-          getUniqueRevealCharacters(correctAnswerText).map(
-            normalizeRevealCharacter,
-          ),
-        );
-  const selectedCharacters = new Set<string>();
+      : new Set(getRevealablePositions(correctAnswerText));
+  const selectedPositions = new Set<number>();
 
   for (const hint of hints) {
     if (hint.hintType === 'text' && !hint.hintText?.trim()) {
       throw new Error('יש למלא טקסט בכל הרמזים הטקסטואליים.');
     }
-    if (hint.hintType === 'letter_reveal' && availableCharacters) {
-      const selectedCharacter = hint.hintText?.trim() ?? '';
-      if (!isSingleRevealCharacter(selectedCharacter)) {
-        throw new Error('יש לבחור אות בכל רמז מסוג חשיפת אות.');
+    if (hint.hintType === 'letter_reveal' && availablePositions) {
+      const selectedPosition = parseRevealPosition(hint.hintText);
+      if (selectedPosition === null) {
+        throw new Error('יש לבחור מיקום אות בכל רמז מסוג חשיפת אות.');
       }
 
-      const normalizedCharacter = normalizeRevealCharacter(selectedCharacter);
-      if (!availableCharacters.has(normalizedCharacter)) {
-        throw new Error('אחת האותיות שנבחרו לרמז אינה מופיעה בתשובה הנכונה.');
+      if (!availablePositions.has(selectedPosition)) {
+        throw new Error('אחד ממיקומי האות שנבחרו אינו זמין בתשובה הנכונה.');
       }
-      if (selectedCharacters.has(normalizedCharacter)) {
-        throw new Error('לא ניתן לבחור את אותה אות ביותר מרמז חשיפת אות אחד.');
+      if (selectedPositions.has(selectedPosition)) {
+        throw new Error(
+          'לא ניתן לבחור את אותו מיקום ביותר מרמז חשיפת אות אחד.',
+        );
       }
-      selectedCharacters.add(normalizedCharacter);
+      selectedPositions.add(selectedPosition);
     }
     if (!Number.isInteger(hint.pointsPenalty) || hint.pointsPenalty < 0) {
       throw new Error('הפחתת הניקוד ברמז חייבת להיות מספר שלם שאינו שלילי.');

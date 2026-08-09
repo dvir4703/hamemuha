@@ -2,21 +2,21 @@ import { useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
-import companyLogo from '../../assets/images/company-logo.jpeg';
+import companyLogo from '../../assets/images/company-logo.png';
 import type { Quiz } from '../../types';
 
 interface OpeningScreenProps {
   quiz: Quiz | null;
   canStart: boolean;
   enabled: boolean;
-  onStart: () => void;
+  onBeginIntro: () => void;
 }
 
 export function OpeningScreen({
   quiz,
   canStart,
   enabled,
-  onStart,
+  onBeginIntro,
 }: OpeningScreenProps) {
   const shouldReduceMotion = useReducedMotion();
 
@@ -26,18 +26,20 @@ export function OpeningScreen({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Enter' || event.repeat) return;
       event.preventDefault();
-      onStart();
+      onBeginIntro();
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canStart, enabled, onStart]);
+  }, [canStart, enabled, onBeginIntro]);
 
   return (
     <div className="live-opening relative min-h-screen overflow-hidden px-5 py-8 text-white sm:px-8">
       <div className="live-opening__atmosphere" aria-hidden="true">
         <div className="live-opening__particles" />
         <div className="live-opening__orbit" />
+        <div className="live-opening__light-sweep" />
+        <div className="live-opening__light-pulse" />
       </div>
       <div className="live-stage__beam" aria-hidden="true" />
 
@@ -57,11 +59,11 @@ export function OpeningScreen({
               damping: 18,
             }}
           >
-            <div className="live-opening__logo mx-auto mb-7 inline-flex max-w-[20rem] items-center justify-center rounded-[2rem] p-3 sm:mb-9">
+            <div className="live-opening__logo mx-auto mb-7 flex items-center justify-center sm:mb-9">
               <img
                 src={companyLogo}
-                alt="החידון והחוויה — בניהולו של יואב שלומברג"
-                className="max-h-40 max-w-full rounded-[1.35rem] object-contain sm:max-h-48"
+                alt="המומחה"
+                className="live-opening__logo-image"
               />
             </div>
           </motion.div>
@@ -91,26 +93,37 @@ export function OpeningScreen({
           >
             <h1
               id="opening-quiz-name"
-              className="live-opening__title mx-auto max-w-6xl font-display text-[clamp(3.75rem,9vw,8.5rem)] font-black leading-[0.95]"
+              className="live-opening__title mx-auto max-w-6xl font-display text-[clamp(3.75rem,9vw,8.5rem)] font-extrabold leading-[0.95]"
             >
               {quiz?.name ?? 'החידון והחוויה'}
             </h1>
+            <motion.p
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: shouldReduceMotion ? 0 : 0.78,
+                duration: 0.54,
+              }}
+              className="live-opening__tagline"
+            >
+              הידע עולה לבמה
+            </motion.p>
             <span
-              className="live-opening__title-accent mt-7 sm:mt-9"
+              className="live-opening__title-accent mt-5 sm:mt-6"
               aria-hidden="true"
             />
           </motion.div>
 
           <motion.button
             type="button"
-            onClick={onStart}
+            onClick={onBeginIntro}
             disabled={!canStart}
             initial={shouldReduceMotion ? false : { opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.98, duration: 0.44 }}
             whileHover={canStart ? { scale: 1.025, y: -2 } : undefined}
             whileTap={canStart ? { scale: 0.985 } : undefined}
-            className="live-opening__start mx-auto mt-12 inline-flex min-w-[min(24rem,88vw)] items-center justify-center gap-4 rounded-[1.4rem] px-8 py-5 font-display text-xl font-black outline-none focus-visible:ring-4 focus-visible:ring-[#ffe08a]/30 disabled:cursor-not-allowed disabled:opacity-45 sm:text-2xl"
+            className="live-opening__start mx-auto mt-12 inline-flex min-w-[min(24rem,88vw)] items-center justify-center gap-4 rounded-[1.4rem] px-8 py-5 font-display text-xl font-extrabold outline-none focus-visible:ring-4 focus-visible:ring-[#ffe08a]/30 disabled:cursor-not-allowed disabled:opacity-45 sm:text-2xl"
           >
             <Play className="relative" size={25} fill="currentColor" />
             <span className="relative">

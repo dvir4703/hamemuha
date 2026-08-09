@@ -1,3 +1,4 @@
+import { Target } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 import type { QuestionWithRelations } from '../../../types';
@@ -12,6 +13,7 @@ const optionQuestionTypes = new Set([
   'multiple_options',
   'association_hints',
 ]);
+const wrongImpactPieces = Array.from({ length: 9 }, (_, index) => index);
 
 export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
   const shouldReduceMotion = useReducedMotion();
@@ -27,6 +29,32 @@ export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
       aria-live="assertive"
     >
       <div className="live-feedback__wrong-spotlight" aria-hidden="true" />
+      <div className="live-feedback__wrong-impact-field" aria-hidden="true">
+        {wrongImpactPieces.map((index) => (
+          <span key={index} />
+        ))}
+      </div>
+      <div className="live-feedback__wrong-shockwave" aria-hidden="true" />
+
+      <motion.div
+        initial={
+          shouldReduceMotion
+            ? false
+            : { opacity: 0, scale: 1.55, rotate: 16, filter: 'blur(10px)' }
+        }
+        animate={{ opacity: 1, scale: 1, rotate: 0, filter: 'blur(0px)' }}
+        transition={{
+          type: 'spring',
+          stiffness: 145,
+          damping: 17,
+          mass: 1.05,
+        }}
+        className="live-feedback__near-miss-seal"
+        aria-hidden="true"
+      >
+        <span className="live-feedback__near-miss-rings" />
+        <Target size={58} strokeWidth={1.55} />
+      </motion.div>
 
       <motion.div
         initial={
@@ -42,7 +70,7 @@ export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
         }}
         className="live-feedback__wrong-intro"
       >
-        <h3>כמעט — הנה התשובה</h3>
+        <h3>כמעט - הנה התשובה</h3>
       </motion.div>
 
       <motion.article

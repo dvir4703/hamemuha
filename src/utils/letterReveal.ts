@@ -12,37 +12,19 @@ export function isSingleRevealCharacter(value: string): boolean {
   );
 }
 
-export function getUniqueRevealCharacters(answer: string): string[] {
-  const uniqueCharacters = new Map<string, string>();
-
-  for (const character of Array.from(answer)) {
-    if (!SINGLE_LETTER_PATTERN.test(character)) continue;
-
-    const normalizedCharacter = normalizeRevealCharacter(character);
-    if (!uniqueCharacters.has(normalizedCharacter)) {
-      uniqueCharacters.set(normalizedCharacter, character);
-    }
-  }
-
-  return Array.from(uniqueCharacters.values());
+export function getRevealablePositions(answer: string): number[] {
+  return Array.from(answer.trim())
+    .map((character, position) => ({ character, position }))
+    .filter(({ character }) => !/\s/u.test(character))
+    .map(({ position }) => position);
 }
 
-export function getRevealCharacterPositions(
-  answer: string,
-  selectedCharacters: Iterable<string>,
-): Set<number> {
-  const normalizedSelections = new Set(
-    Array.from(selectedCharacters, normalizeRevealCharacter).filter(Boolean),
-  );
+export function parseRevealPosition(
+  value: string | null | undefined,
+): number | null {
+  const normalizedValue = value?.trim() ?? '';
+  if (!/^(0|[1-9]\d*)$/u.test(normalizedValue)) return null;
 
-  return new Set(
-    Array.from(answer)
-      .map((character, index) => ({ character, index }))
-      .filter(
-        ({ character }) =>
-          SINGLE_LETTER_PATTERN.test(character) &&
-          normalizedSelections.has(normalizeRevealCharacter(character)),
-      )
-      .map(({ index }) => index),
-  );
+  const position = Number(normalizedValue);
+  return Number.isSafeInteger(position) ? position : null;
 }

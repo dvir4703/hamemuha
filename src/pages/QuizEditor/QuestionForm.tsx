@@ -40,9 +40,8 @@ import type {
   Quiz,
 } from '../../types';
 import {
-  getUniqueRevealCharacters,
-  isSingleRevealCharacter,
-  normalizeRevealCharacter,
+  getRevealablePositions,
+  parseRevealPosition,
 } from '../../utils/letterReveal';
 
 interface FormErrors extends FieldErrors {
@@ -251,29 +250,25 @@ export default function QuestionForm() {
         const letterHints = hints.filter(
           (hint) => hint.hintType === 'letter_reveal',
         );
-        const selectedCharacters = letterHints.map((hint) =>
-          normalizeRevealCharacter(hint.hintText),
+        const selectedPositions = letterHints.map((hint) =>
+          parseRevealPosition(hint.hintText),
         );
-        const validCharacters = new Set(
-          getUniqueRevealCharacters(correctAnswerText).map(
-            normalizeRevealCharacter,
-          ),
+        const validPositions = new Set(
+          getRevealablePositions(correctAnswerText),
         );
 
-        if (
-          letterHints.some((hint) => !isSingleRevealCharacter(hint.hintText))
-        ) {
-          next.hints = 'יש לבחור אות בכל רמז מסוג חשיפת אות.';
+        if (selectedPositions.some((position) => position === null)) {
+          next.hints = 'יש לבחור מיקום אות בכל רמז מסוג חשיפת אות.';
         } else if (
-          selectedCharacters.some(
-            (character) => !validCharacters.has(character),
+          selectedPositions.some(
+            (position) => position === null || !validPositions.has(position),
           )
         ) {
-          next.hints = 'אחת האותיות שנבחרו לרמז כבר אינה מופיעה בתשובה הנכונה.';
+          next.hints = 'אחד ממיקומי האות שנבחרו כבר אינו זמין בתשובה הנכונה.';
         } else if (
-          new Set(selectedCharacters).size !== selectedCharacters.length
+          new Set(selectedPositions).size !== selectedPositions.length
         ) {
-          next.hints = 'לא ניתן לבחור את אותה אות ביותר מרמז חשיפת אות אחד.';
+          next.hints = 'לא ניתן לבחור את אותו מיקום ביותר מרמז חשיפת אות אחד.';
         }
       }
     }

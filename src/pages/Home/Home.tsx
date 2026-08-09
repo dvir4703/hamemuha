@@ -269,7 +269,7 @@ export default function Home() {
                 <p className="mt-2 leading-7 text-ink/55">
                   {hasSearch
                     ? 'אפשר לנסות שם אחר או לנקות את שדה החיפוש.'
-                    : 'נותנים לו שם — ומתחילים לבנות את החוויה.'}
+                    : 'נותנים לו שם - ומתחילים לבנות את החוויה.'}
                 </p>
                 {hasSearch ? (
                   <button

@@ -12,7 +12,13 @@ import {
 } from '../utils/liveQuestion';
 
 export type GamePhase =
-  'idle' | 'opening' | 'playing' | 'showing_answer' | 'paused' | 'finished';
+  | 'idle'
+  | 'opening'
+  | 'intro_video'
+  | 'playing'
+  | 'showing_answer'
+  | 'paused'
+  | 'finished';
 
 export interface ContestantLiveStats {
   correct: number;
@@ -49,6 +55,7 @@ export interface LiveStoreState {
   isEnding: boolean;
   error: string | null;
   loadQuiz: (quizId: number) => Promise<void>;
+  beginIntroVideo: () => void;
   startGame: () => void;
   jumpToContestant: (displayOrder: number) => boolean;
   nextQuestion: () => void;
@@ -240,9 +247,19 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     }
   },
 
-  startGame: () => {
+  beginIntroVideo: () => {
     const state = get();
     if (state.gamePhase !== 'opening') return;
+    set({
+      gamePhase: 'intro_video',
+      lastAnswerResult: null,
+      previousGamePhase: null,
+    });
+  },
+
+  startGame: () => {
+    const state = get();
+    if (state.gamePhase !== 'intro_video') return;
     const shouldEndImmediately = haveAllContestantsFinished(
       state.contestants,
       state.questionsByContestant,
@@ -461,6 +478,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       state.quizId === null ||
       state.gamePhase === 'idle' ||
       state.gamePhase === 'opening' ||
+      state.gamePhase === 'intro_video' ||
       state.gamePhase === 'finished' ||
       state.isEnding
     ) {

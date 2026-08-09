@@ -11,6 +11,7 @@ import { PauseOverlay } from '../../components/live/PauseOverlay';
 import { useKeyboard } from '../../hooks/useKeyboard';
 import { selectCurrentQuestion, useLiveStore } from '../../store/liveStore';
 import '../../styles/live-theme.css';
+import { IntroVideoScreen } from './IntroVideoScreen';
 import { OpeningScreen } from './OpeningScreen';
 import { ScoreboardScreen } from './ScoreboardScreen';
 
@@ -46,6 +47,7 @@ export default function LiveGame() {
   const isEnding = useLiveStore((state) => state.isEnding);
   const error = useLiveStore((state) => state.error);
   const loadQuiz = useLiveStore((state) => state.loadQuiz);
+  const beginIntroVideo = useLiveStore((state) => state.beginIntroVideo);
   const startGame = useLiveStore((state) => state.startGame);
   const submitAnswer = useLiveStore((state) => state.submitAnswer);
   const resetGame = useLiveStore((state) => state.resetGame);
@@ -103,6 +105,7 @@ export default function LiveGame() {
       !cheatSheetOpen &&
       gamePhase !== 'opening' &&
       gamePhase !== 'finished',
+    gameActionsEnabled: gamePhase !== 'intro_video',
     hintEnabled: gamePhase === 'playing' && isHintQuestion,
     judgementEnabled: gamePhase === 'playing' && isOpenAnswerQuestion,
     onExitRequest: handleExitRequest,
@@ -130,6 +133,16 @@ export default function LiveGame() {
       : contestantFinished
         ? currentQuestions.length
         : Math.min(currentIndex + 1, currentQuestions.length);
+  const exitConfirmationDialog = (
+    <LiveConfirmationDialog
+      open={exitConfirmationOpen}
+      title="לצאת מהמשחק?"
+      description="האם אתם בטוחים שברצונכם לצאת? התקדמות החידון תאבד."
+      confirmLabel="יציאה מהמשחק"
+      onConfirm={handleConfirmExit}
+      onCancel={handleCancelExit}
+    />
+  );
 
   if (isLoading) {
     return (
@@ -156,12 +169,21 @@ export default function LiveGame() {
           quiz={quiz}
           canStart={contestants.length > 0}
           enabled={!cheatSheetOpen}
-          onStart={startGame}
+          onBeginIntro={beginIntroVideo}
         />
         <KeyboardCheatSheet
           open={cheatSheetOpen}
           onOpenChange={setCheatSheetOpen}
         />
+      </>
+    );
+  }
+
+  if (gamePhase === 'intro_video') {
+    return (
+      <>
+        <IntroVideoScreen onComplete={startGame} />
+        {exitConfirmationDialog}
       </>
     );
   }
@@ -337,14 +359,7 @@ export default function LiveGame() {
       <AnimatePresence>
         {gamePhase === 'paused' ? <PauseOverlay visible /> : null}
       </AnimatePresence>
-      <LiveConfirmationDialog
-        open={exitConfirmationOpen}
-        title="לצאת מהמשחק?"
-        description="האם אתם בטוחים שברצונכם לצאת? התקדמות החידון תאבד."
-        confirmLabel="יציאה מהמשחק"
-        onConfirm={handleConfirmExit}
-        onCancel={handleCancelExit}
-      />
+      {exitConfirmationDialog}
     </div>
   );
 }
