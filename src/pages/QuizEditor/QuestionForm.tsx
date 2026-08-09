@@ -27,6 +27,7 @@ import {
   type HintDraft,
 } from '../../components/quiz/QuestionTypeFields/types';
 import { QuestionImagePicker } from '../../components/quiz/QuestionImagePicker';
+import { TimeLimitStepper } from '../../components/quiz/TimeLimitStepper';
 import {
   QUESTION_TYPE_META,
   QUESTION_TYPE_ORDER,
@@ -43,6 +44,7 @@ import {
   getRevealablePositions,
   parseRevealPosition,
 } from '../../utils/letterReveal';
+import { isValidTimeLimit, normalizeTimeLimit } from '../../utils/timeLimit';
 
 interface FormErrors extends FieldErrors {
   contestantId?: string;
@@ -140,7 +142,7 @@ export default function QuestionForm() {
       setImagePath(question.image_path);
       setPoints(question.points);
       setIsUnlimitedTime(question.time_limit === null);
-      setTimeLimit(question.time_limit ?? 30);
+      setTimeLimit(normalizeTimeLimit(question.time_limit ?? 30));
       setExplanation(question.explanation ?? '');
       setCorrectAnswerText(question.correct_answer_text ?? '');
       setShuffleAnswers(question.shuffle_answers);
@@ -208,8 +210,8 @@ export default function QuestionForm() {
           : 'יש להזין טקסט לשאלה.';
     if (!Number.isInteger(points) || points < 0)
       next.points = 'הניקוד חייב להיות מספר שלם שאינו שלילי.';
-    if (!isUnlimitedTime && (!Number.isInteger(timeLimit) || timeLimit <= 0))
-      next.timeLimit = 'יש להזין מספר שניות גדול מאפס.';
+    if (!isUnlimitedTime && !isValidTimeLimit(timeLimit))
+      next.timeLimit = 'זמן המענה חייב להיות כפולה של 10, בין 10 ל־300 שניות.';
 
     if (
       questionType === 'complete_sentence' ||
@@ -748,27 +750,13 @@ export default function QuestionForm() {
                 הסימון מגדיר ללא הגבלת זמן
               </p>
               {!isUnlimitedTime ? (
-                <label className="mt-4 block">
-                  <span className="mb-1.5 block text-xs font-bold text-ink/50">
-                    מספר שניות
-                  </span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
+                <div className="mt-4">
+                  <TimeLimitStepper
                     value={timeLimit}
-                    onChange={(event) =>
-                      setTimeLimit(Number(event.target.value))
-                    }
-                    aria-invalid={Boolean(errors.timeLimit)}
-                    className={`w-full rounded-xl border bg-white px-3 py-3 font-bold outline-none focus:ring-4 ${errors.timeLimit ? 'border-coral focus:ring-coral/10' : 'border-ink/10 focus:border-teal focus:ring-teal/10'}`}
+                    error={errors.timeLimit}
+                    onChange={setTimeLimit}
                   />
-                  {errors.timeLimit ? (
-                    <p className="mt-1.5 text-xs font-bold text-red-700">
-                      {errors.timeLimit}
-                    </p>
-                  ) : null}
-                </label>
+                </div>
               ) : null}
             </section>
 

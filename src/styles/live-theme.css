@@ -2031,6 +2031,68 @@
   object-fit: contain;
 }
 
+.live-question-reveal {
+  display: grid;
+  width: 100%;
+  min-height: calc(100vh - 9.5rem);
+  place-items: center;
+  padding: clamp(1rem, 3vh, 2.5rem) clamp(1rem, 3vw, 3rem) 6rem;
+  text-align: center;
+}
+
+.live-question-reveal .live-question-header {
+  max-width: 78rem;
+  margin: 0;
+}
+
+.live-question-reveal .live-question__title {
+  font-size: clamp(3.1rem, 6.6vw, 6.8rem);
+  line-height: 1.02;
+  text-shadow:
+    0 7px 38px rgba(0, 0, 0, 0.68),
+    0 0 44px rgba(244, 185, 66, 0.13);
+}
+
+.live-question-reveal .live-question__media {
+  width: min(42rem, 72vw);
+  height: clamp(12rem, 34vh, 24rem);
+}
+
+.live-question-reveal__progress {
+  position: fixed;
+  z-index: 28;
+  right: 50%;
+  bottom: clamp(4.45rem, 8vh, 6.2rem);
+  width: min(48rem, calc(100vw - 3rem));
+  height: 0.6rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 224, 138, 0.28);
+  border-radius: 999px;
+  background: rgba(5, 7, 19, 0.72);
+  box-shadow:
+    0 8px 26px rgba(0, 0, 0, 0.42),
+    inset 0 1px 4px rgba(0, 0, 0, 0.55),
+    0 0 24px rgba(244, 185, 66, 0.08);
+  transform: translateX(50%);
+}
+
+.live-question-reveal__progress > span {
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 224, 138, 0.76),
+    var(--live-gold) 55%,
+    #fff1b8
+  );
+  box-shadow:
+    0 0 18px rgba(244, 185, 66, 0.52),
+    0 0 36px rgba(244, 185, 66, 0.22);
+  transform-origin: 100% 50%;
+  will-change: transform;
+}
+
 .live-question-header--cinematic {
   min-height: clamp(16rem, 52vh, 34rem);
   justify-content: center;
@@ -2113,6 +2175,20 @@
 
   .live-question-shell {
     min-height: calc(100vh - 8.5rem);
+  }
+
+  .live-question-reveal {
+    min-height: calc(100vh - 8.5rem);
+    padding-inline: 0.75rem;
+  }
+
+  .live-question-reveal .live-question__title {
+    font-size: clamp(2.65rem, 12vw, 4.6rem);
+  }
+
+  .live-question-reveal .live-question__media {
+    width: min(34rem, 92vw);
+    height: clamp(10rem, 28vh, 18rem);
   }
 
   .live-question-shell__content {

@@ -8,8 +8,11 @@ import { KeyboardCheatSheet } from '../../components/live/KeyboardCheatSheet';
 import { LiveConfirmationDialog } from '../../components/live/LiveConfirmationDialog';
 import { LiveQuestionRenderer } from '../../components/live/LiveQuestionRenderer';
 import { PauseOverlay } from '../../components/live/PauseOverlay';
+import { QuestionRevealScreen } from '../../components/live/QuestionRevealScreen';
 import { QuestionTimer } from '../../components/live/QuestionTimer';
 import { useKeyboard } from '../../hooks/useKeyboard';
+import { useQuestionAudio } from '../../hooks/useQuestionAudio';
+import { useQuestionReveal } from '../../hooks/useQuestionReveal';
 import { useQuestionTimer } from '../../hooks/useQuestionTimer';
 import { selectCurrentQuestion, useLiveStore } from '../../store/liveStore';
 import '../../styles/live-theme.css';
@@ -36,6 +39,9 @@ export default function LiveGame() {
   const scores = useLiveStore((state) => state.scoresByContestant);
   const stats = useLiveStore((state) => state.statsByContestant);
   const gamePhase = useLiveStore((state) => state.gamePhase);
+  const questionRevealSequence = useLiveStore(
+    (state) => state.questionRevealSequence,
+  );
   const currentQuestion = useLiveStore(selectCurrentQuestion);
   const revealedHints = useLiveStore(
     (state) => state.revealedHintsForCurrentQuestion,
@@ -54,6 +60,9 @@ export default function LiveGame() {
   const loadQuiz = useLiveStore((state) => state.loadQuiz);
   const beginIntroVideo = useLiveStore((state) => state.beginIntroVideo);
   const startGame = useLiveStore((state) => state.startGame);
+  const completeQuestionReveal = useLiveStore(
+    (state) => state.completeQuestionReveal,
+  );
   const submitAnswer = useLiveStore((state) => state.submitAnswer);
   const resetGame = useLiveStore((state) => state.resetGame);
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
@@ -69,6 +78,15 @@ export default function LiveGame() {
     lastAnswerResult?.questionId === currentQuestion.id &&
     (gamePhase === 'showing_answer' ||
       (gamePhase === 'paused' && previousGamePhase === 'showing_answer')),
+  );
+  const isRevealingQuestion = Boolean(
+    currentQuestion &&
+    (gamePhase === 'revealing' ||
+      (gamePhase === 'paused' && previousGamePhase === 'revealing')),
+  );
+  const questionReveal = useQuestionReveal(
+    questionRevealSequence,
+    gamePhase === 'revealing' && !exitConfirmationOpen && !cheatSheetOpen,
   );
   const questionTimer = useQuestionTimer(
     currentQuestion?.id ?? null,
@@ -87,6 +105,32 @@ export default function LiveGame() {
     (gamePhase === 'playing' ||
       (gamePhase === 'paused' && previousGamePhase === 'playing')),
   );
+
+  useQuestionAudio(
+    currentQuestion?.id ?? null,
+    currentQuestion?.time_limit ?? null,
+    gamePhase === 'playing' &&
+      !isShowingFeedback &&
+      !questionTimer.hasExpired &&
+      !exitConfirmationOpen &&
+      !cheatSheetOpen,
+  );
+
+  useEffect(() => {
+    if (
+      gamePhase !== 'revealing' ||
+      !currentQuestion ||
+      !questionReveal.hasCompleted
+    ) {
+      return;
+    }
+    completeQuestionReveal(currentQuestion.id);
+  }, [
+    completeQuestionReveal,
+    currentQuestion,
+    gamePhase,
+    questionReveal.hasCompleted,
+  ]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -241,7 +285,7 @@ export default function LiveGame() {
           </div>
         ) : null}
 
-        {currentContestant ? (
+        {currentContestant && !isRevealingQuestion ? (
           <motion.div
             initial={
               shouldReduceMotion ? false : { opacity: 0, y: -20, scale: 0.94 }
@@ -301,7 +345,9 @@ export default function LiveGame() {
                   key={
                     isShowingFeedback
                       ? `feedback-${lastAnswerResult?.submissionId}`
-                      : `question-${currentQuestion.id}`
+                      : isRevealingQuestion
+                        ? `reveal-${questionRevealSequence}`
+                        : `question-${currentQuestion.id}`
                   }
                   initial={
                     shouldReduceMotion
@@ -345,6 +391,11 @@ export default function LiveGame() {
                         cheatSheetOpen
                       }
                     />
+                  ) : isRevealingQuestion ? (
+                    <QuestionRevealScreen
+                      question={currentQuestion}
+                      progress={questionReveal.progress}
+                    />
                   ) : (
                     <LiveQuestionRenderer
                       question={currentQuestion}
@@ -363,7 +414,7 @@ export default function LiveGame() {
           )}
         </section>
 
-        {currentContestant ? (
+        {currentContestant && !isRevealingQuestion ? (
           <footer className="live-stage__corner-hud">
             <div className="live-stage__contestant-hud">
               <span aria-hidden="true">{currentContestant.display_order}</span>

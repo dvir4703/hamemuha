@@ -15,6 +15,7 @@ export type GamePhase =
   | 'idle'
   | 'opening'
   | 'intro_video'
+  | 'revealing'
   | 'playing'
   | 'showing_answer'
   | 'paused'
@@ -33,7 +34,7 @@ export interface LastAnswerResult {
   pointsAwarded: number;
 }
 
-type ResumableGamePhase = 'playing' | 'showing_answer';
+type ResumableGamePhase = 'revealing' | 'playing' | 'showing_answer';
 
 export interface LiveStoreState {
   quizId: number | null;
@@ -46,6 +47,7 @@ export interface LiveStoreState {
   scoresByContestant: Map<number, number>;
   statsByContestant: Map<number, ContestantLiveStats>;
   gameStartTime: number | null;
+  questionRevealSequence: number;
   revealedHintsForCurrentQuestion: number;
   revealedOptionsForCurrentQuestion: number;
   potentialPointsForCurrentQuestion: number;
@@ -58,6 +60,7 @@ export interface LiveStoreState {
   loadQuiz: (quizId: number) => Promise<void>;
   beginIntroVideo: () => void;
   startGame: () => void;
+  completeQuestionReveal: (questionId: number) => void;
   jumpToContestant: (displayOrder: number) => boolean;
   nextQuestion: () => void;
   previousQuestion: () => void;
@@ -81,6 +84,7 @@ interface ResettableLiveState {
   scoresByContestant: Map<number, number>;
   statsByContestant: Map<number, ContestantLiveStats>;
   gameStartTime: number | null;
+  questionRevealSequence: number;
   revealedHintsForCurrentQuestion: number;
   revealedOptionsForCurrentQuestion: number;
   potentialPointsForCurrentQuestion: number;
@@ -104,6 +108,7 @@ function createIdleState(): ResettableLiveState {
     scoresByContestant: new Map(),
     statsByContestant: new Map(),
     gameStartTime: null,
+    questionRevealSequence: 0,
     revealedHintsForCurrentQuestion: 0,
     revealedOptionsForCurrentQuestion: 0,
     potentialPointsForCurrentQuestion: 0,
@@ -227,6 +232,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
         scoresByContestant: scores,
         statsByContestant: stats,
         gameStartTime: null,
+        questionRevealSequence: 0,
         revealedHintsForCurrentQuestion: 0,
         revealedOptionsForCurrentQuestion: 0,
         potentialPointsForCurrentQuestion:
@@ -270,9 +276,13 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       state.questionsByContestant,
       state.currentQuestionIndexByContestant,
     );
+    const hasCurrentQuestion = getCurrentQuestion(state) !== null;
     set({
-      gamePhase: 'playing',
+      gamePhase: hasCurrentQuestion ? 'revealing' : 'playing',
       gameStartTime: state.gameStartTime ?? Date.now(),
+      questionRevealSequence: hasCurrentQuestion
+        ? state.questionRevealSequence + 1
+        : state.questionRevealSequence,
       lastAnswerResult: null,
       previousGamePhase: null,
     });
@@ -281,6 +291,13 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
         .endGame()
         .catch(() => undefined);
     }
+  },
+
+  completeQuestionReveal: (questionId) => {
+    const state = get();
+    const question = getCurrentQuestion(state);
+    if (state.gamePhase !== 'revealing' || question?.id !== questionId) return;
+    set({ gamePhase: 'playing', previousGamePhase: null });
   },
 
   jumpToContestant: (displayOrder) => {
@@ -294,13 +311,39 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     if (!contestant) return false;
 
     const isChangingContestant = contestant.id !== state.currentContestantId;
+    const currentQuestion = getCurrentQuestion(state);
+    const targetQuestionIndex =
+      state.currentQuestionIndexByContestant.get(contestant.id) ?? 0;
+    const targetQuestion =
+      state.questionsByContestant.get(contestant.id)?.[targetQuestionIndex] ??
+      null;
+    const isChangingQuestion = currentQuestion?.id !== targetQuestion?.id;
+    const isActiveQuestionPhase =
+      state.gamePhase === 'revealing' ||
+      state.gamePhase === 'playing' ||
+      state.gamePhase === 'showing_answer';
     const nextPhase =
-      state.gamePhase === 'playing' || state.gamePhase === 'showing_answer'
-        ? 'playing'
-        : state.gamePhase;
+      isChangingQuestion && targetQuestion && isActiveQuestionPhase
+        ? 'revealing'
+        : state.gamePhase === 'revealing' && !isChangingQuestion
+          ? 'revealing'
+          : state.gamePhase === 'playing' ||
+              state.gamePhase === 'showing_answer'
+            ? 'playing'
+            : state.gamePhase;
+    const nextPreviousPhase =
+      state.gamePhase === 'paused' && isChangingQuestion
+        ? targetQuestion
+          ? 'revealing'
+          : 'playing'
+        : state.previousGamePhase;
     set({
       currentContestantId: contestant.id,
       gamePhase: nextPhase,
+      questionRevealSequence:
+        isChangingQuestion && targetQuestion
+          ? state.questionRevealSequence + 1
+          : state.questionRevealSequence,
       lastAnswerResult: null,
       revealedHintsForCurrentQuestion: isChangingContestant
         ? 0
@@ -316,7 +359,9 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
           )
         : state.potentialPointsForCurrentQuestion,
       previousGamePhase:
-        nextPhase === 'playing' ? null : state.previousGamePhase,
+        nextPhase === 'playing' || nextPhase === 'revealing'
+          ? null
+          : nextPreviousPhase,
     });
     return true;
   },
@@ -325,7 +370,9 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     const state = get();
     if (
       state.currentContestantId === null ||
-      (state.gamePhase !== 'playing' && state.gamePhase !== 'showing_answer')
+      (state.gamePhase !== 'revealing' &&
+        state.gamePhase !== 'playing' &&
+        state.gamePhase !== 'showing_answer')
     ) {
       return;
     }
@@ -334,6 +381,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     const currentIndex =
       state.currentQuestionIndexByContestant.get(contestantId) ?? 0;
     const nextIndex = Math.min(currentIndex + 1, questions.length);
+    if (nextIndex === currentIndex) return;
     const indexes = new Map(state.currentQuestionIndexByContestant);
     indexes.set(contestantId, nextIndex);
     const shouldEndGame = haveAllContestantsFinished(
@@ -343,10 +391,13 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     );
     set({
       currentQuestionIndexByContestant: indexes,
+      questionRevealSequence: questions[nextIndex]
+        ? state.questionRevealSequence + 1
+        : state.questionRevealSequence,
       revealedHintsForCurrentQuestion: 0,
       revealedOptionsForCurrentQuestion: 0,
       potentialPointsForCurrentQuestion: questions[nextIndex]?.points ?? 0,
-      gamePhase: 'playing',
+      gamePhase: questions[nextIndex] ? 'revealing' : 'playing',
       lastAnswerResult: null,
       previousGamePhase: null,
     });
@@ -361,7 +412,9 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     const state = get();
     if (
       state.currentContestantId === null ||
-      (state.gamePhase !== 'playing' && state.gamePhase !== 'showing_answer')
+      (state.gamePhase !== 'revealing' &&
+        state.gamePhase !== 'playing' &&
+        state.gamePhase !== 'showing_answer')
     ) {
       return;
     }
@@ -370,14 +423,18 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     const currentIndex =
       state.currentQuestionIndexByContestant.get(contestantId) ?? 0;
     const previousIndex = Math.max(currentIndex - 1, 0);
+    if (previousIndex === currentIndex) return;
     const indexes = new Map(state.currentQuestionIndexByContestant);
     indexes.set(contestantId, previousIndex);
     set({
       currentQuestionIndexByContestant: indexes,
+      questionRevealSequence: questions[previousIndex]
+        ? state.questionRevealSequence + 1
+        : state.questionRevealSequence,
       revealedHintsForCurrentQuestion: 0,
       revealedOptionsForCurrentQuestion: 0,
       potentialPointsForCurrentQuestion: questions[previousIndex]?.points ?? 0,
-      gamePhase: 'playing',
+      gamePhase: questions[previousIndex] ? 'revealing' : 'playing',
       lastAnswerResult: null,
       previousGamePhase: null,
     });
@@ -498,7 +555,11 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       });
       return;
     }
-    if (state.gamePhase === 'playing' || state.gamePhase === 'showing_answer') {
+    if (
+      state.gamePhase === 'revealing' ||
+      state.gamePhase === 'playing' ||
+      state.gamePhase === 'showing_answer'
+    ) {
       set({
         gamePhase: 'paused',
         previousGamePhase: state.gamePhase,
