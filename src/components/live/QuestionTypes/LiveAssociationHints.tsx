@@ -52,12 +52,11 @@ export function LiveAssociationHints(props: LiveQuestionTypeProps) {
                   mass: 0.86,
                 }}
                 className="live-hint-card"
-                data-primary={index === 0}
               >
-                <span className="live-hint-card__number">
-                  {index === 0 ? <Lightbulb size={22} /> : index + 1}
+                <span className="live-hint-card__icon" aria-hidden="true">
+                  <Lightbulb size={18} />
                 </span>
-                <div>
+                <div className="live-hint-card__copy">
                   <span className="live-hint-card__label">
                     {index === 0 ? 'הרמז הראשון' : `רמז ${index + 1}`}
                   </span>
