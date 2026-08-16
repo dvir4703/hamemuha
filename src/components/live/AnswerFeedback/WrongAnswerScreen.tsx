@@ -5,6 +5,7 @@ import type { QuestionWithRelations } from '../../../types';
 
 interface WrongAnswerScreenProps {
   question: QuestionWithRelations;
+  wasTimeout?: boolean;
 }
 
 const optionQuestionTypes = new Set([
@@ -15,7 +16,10 @@ const optionQuestionTypes = new Set([
 ]);
 const wrongImpactPieces = Array.from({ length: 9 }, (_, index) => index);
 
-export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
+export function WrongAnswerScreen({
+  question,
+  wasTimeout = false,
+}: WrongAnswerScreenProps) {
   const shouldReduceMotion = useReducedMotion();
   const sortedAnswers = [...question.answers].sort(
     (a, b) => a.display_order - b.display_order || a.id - b.id,
@@ -26,6 +30,7 @@ export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
     <section
       className="live-feedback live-feedback--wrong"
       data-answer-feedback="wrong"
+      data-timeout={wasTimeout}
       aria-live="assertive"
     >
       <div className="live-feedback__wrong-spotlight" aria-hidden="true" />
@@ -70,7 +75,7 @@ export function WrongAnswerScreen({ question }: WrongAnswerScreenProps) {
         }}
         className="live-feedback__wrong-intro"
       >
-        <h3>כמעט - הנה התשובה</h3>
+        <h3>{wasTimeout ? 'נגמר הזמן - הנה התשובה' : 'כמעט - הנה התשובה'}</h3>
       </motion.div>
 
       <motion.article

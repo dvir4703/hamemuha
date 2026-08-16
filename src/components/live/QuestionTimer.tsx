@@ -1,5 +1,4 @@
 import type { CSSProperties } from 'react';
-import { TimerReset } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 interface QuestionTimerProps {
@@ -21,7 +20,6 @@ export function QuestionTimer({
   const timerStyle: TimerStyle = {
     '--timer-progress': `${Math.round(progress * 360)}deg`,
   };
-  const status = expired ? 'הזמן נגמר' : paused ? 'מושהה' : 'שניות';
 
   return (
     <motion.aside
@@ -42,11 +40,9 @@ export function QuestionTimer({
     >
       <span className="live-question-timer__dial" style={timerStyle}>
         <span className="live-question-timer__face">
-          <TimerReset size={17} strokeWidth={2.2} aria-hidden="true" />
           <strong>{remainingSeconds}</strong>
         </span>
       </span>
-      <span className="live-question-timer__status">{status}</span>
     </motion.aside>
   );
 }

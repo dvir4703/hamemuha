@@ -191,7 +191,7 @@ export function LiveCompleteSentence({
     timeoutHandledRef.current = true;
 
     if (!values.some(Boolean)) {
-      onSubmit(false, 0);
+      onSubmit(false, 0, true);
       return;
     }
 
@@ -209,6 +209,7 @@ export function LiveCompleteSentence({
     onSubmit(
       isCorrect,
       isCorrect ? calculatePotentialPoints(question, revealedHints) : 0,
+      true,
     );
   }, [
     characters,

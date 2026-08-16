@@ -11,7 +11,11 @@ interface AnswerSelectionProps {
   revealedHints: number;
   revealedOptions: number;
   timeoutExpired: boolean;
-  onSubmit: (isCorrect: boolean, pointsAwarded: number) => void;
+  onSubmit: (
+    isCorrect: boolean,
+    pointsAwarded: number,
+    wasTimeout?: boolean,
+  ) => void;
   disabled?: boolean;
   forceSingle?: boolean;
   compact?: boolean;
@@ -162,26 +166,30 @@ export function AnswerSelection({
     });
   };
 
-  const submitSelection = useCallback(() => {
-    if (disabled) return;
-    const selected = new Set(selectedIds);
-    const isCorrect =
-      selected.size === correctIds.length &&
-      correctIds.every((answerId) => selected.has(answerId));
-    onSubmit(
-      isCorrect,
-      isCorrect ? calculatePotentialPoints(question, revealedHints) : 0,
-    );
-  }, [correctIds, disabled, onSubmit, question, revealedHints, selectedIds]);
+  const submitSelection = useCallback(
+    (wasTimeout = false) => {
+      if (disabled) return;
+      const selected = new Set(selectedIds);
+      const isCorrect =
+        selected.size === correctIds.length &&
+        correctIds.every((answerId) => selected.has(answerId));
+      onSubmit(
+        isCorrect,
+        isCorrect ? calculatePotentialPoints(question, revealedHints) : 0,
+        wasTimeout,
+      );
+    },
+    [correctIds, disabled, onSubmit, question, revealedHints, selectedIds],
+  );
 
   useEffect(() => {
     if (!timeoutExpired || timeoutHandledRef.current) return;
     timeoutHandledRef.current = true;
     if (selectedIds.length === 0) {
-      onSubmit(false, 0);
+      onSubmit(false, 0, true);
       return;
     }
-    submitSelection();
+    submitSelection(true);
   }, [onSubmit, selectedIds.length, submitSelection, timeoutExpired]);
 
   return (
@@ -223,7 +231,7 @@ export function AnswerSelection({
           {selectedIds.length > 0 && allOptionsRevealed ? (
             <motion.button
               type="button"
-              onClick={submitSelection}
+              onClick={() => submitSelection()}
               disabled={disabled}
               initial={
                 reduceMotion ? false : { opacity: 0, y: 14, scale: 0.96 }

@@ -5,6 +5,10 @@ export interface LiveQuestionTypeProps {
   revealedHints: number;
   revealedOptions: number;
   timeoutExpired: boolean;
-  onSubmit: (isCorrect: boolean, pointsAwarded: number) => void;
+  onSubmit: (
+    isCorrect: boolean,
+    pointsAwarded: number,
+    wasTimeout?: boolean,
+  ) => void;
   disabled?: boolean;
 }

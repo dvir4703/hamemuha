@@ -164,6 +164,6 @@ export function AnswerFeedbackScreen({
       paused={paused}
     />
   ) : (
-    <WrongAnswerScreen question={question} />
+    <WrongAnswerScreen question={question} wasTimeout={result.wasTimeout} />
   );
 }

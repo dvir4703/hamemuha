@@ -95,6 +95,7 @@ export default function LiveGame() {
       !isShowingFeedback &&
       !exitConfirmationOpen &&
       !cheatSheetOpen,
+    questionRevealSequence,
   );
   const questionTimerPaused =
     gamePhase === 'paused' || exitConfirmationOpen || cheatSheetOpen;
@@ -347,7 +348,7 @@ export default function LiveGame() {
                       ? `feedback-${lastAnswerResult?.submissionId}`
                       : isRevealingQuestion
                         ? `reveal-${questionRevealSequence}`
-                        : `question-${currentQuestion.id}`
+                        : `question-${currentContestant.id}-${currentQuestion.id}-${questionRevealSequence}`
                   }
                   initial={
                     shouldReduceMotion
@@ -398,6 +399,7 @@ export default function LiveGame() {
                     />
                   ) : (
                     <LiveQuestionRenderer
+                      key={`${currentContestant.id}-${currentQuestion.id}-${questionRevealSequence}`}
                       question={currentQuestion}
                       revealedHints={revealedHints}
                       revealedOptions={revealedOptions}
@@ -432,7 +434,7 @@ export default function LiveGame() {
       <AnimatePresence>
         {showQuestionTimer && questionTimer.remainingSeconds !== null ? (
           <QuestionTimer
-            key={currentQuestion?.id}
+            key={`${currentQuestion?.id}-${questionRevealSequence}`}
             remainingSeconds={questionTimer.remainingSeconds}
             progress={questionTimer.progress}
             paused={questionTimerPaused}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 interface QuestionTimerState {
   questionId: number | null;
+  questionEntrySequence: number;
   timeLimitMs: number | null;
   remainingMs: number;
   expired: boolean;
@@ -20,10 +21,12 @@ function toTimeLimitMs(timeLimitSeconds: number | null): number | null {
 
 function createTimerState(
   questionId: number | null,
+  questionEntrySequence: number,
   timeLimitMs: number | null,
 ): QuestionTimerState {
   return {
     questionId,
+    questionEntrySequence,
     timeLimitMs,
     remainingMs: timeLimitMs ?? 0,
     expired: false,
@@ -34,14 +37,16 @@ export function useQuestionTimer(
   questionId: number | null,
   timeLimitSeconds: number | null,
   active: boolean,
+  questionEntrySequence: number,
 ): QuestionTimerResult {
   const timeLimitMs = toTimeLimitMs(timeLimitSeconds);
   const remainingRef = useRef(timeLimitMs ?? 0);
   const [timerState, setTimerState] = useState(() =>
-    createTimerState(questionId, timeLimitMs),
+    createTimerState(questionId, questionEntrySequence, timeLimitMs),
   );
   const isCurrentTimer =
     timerState.questionId === questionId &&
+    timerState.questionEntrySequence === questionEntrySequence &&
     timerState.timeLimitMs === timeLimitMs;
   const currentExpired = isCurrentTimer ? timerState.expired : false;
 
@@ -62,10 +67,12 @@ export function useQuestionTimer(
       setTimerState((current) => {
         if (
           current.questionId !== questionId ||
+          current.questionEntrySequence !== questionEntrySequence ||
           current.timeLimitMs !== timeLimitMs
         ) {
           return {
             questionId,
+            questionEntrySequence,
             timeLimitMs,
             remainingMs,
             expired: remainingMs === 0,
@@ -93,7 +100,14 @@ export function useQuestionTimer(
       if (intervalId !== undefined) window.clearInterval(intervalId);
       remainingRef.current = Math.max(0, deadline - Date.now());
     };
-  }, [active, currentExpired, isCurrentTimer, questionId, timeLimitMs]);
+  }, [
+    active,
+    currentExpired,
+    isCurrentTimer,
+    questionEntrySequence,
+    questionId,
+    timeLimitMs,
+  ]);
 
   const remainingMs = isCurrentTimer
     ? timerState.remainingMs
