@@ -26,6 +26,16 @@ export function LiveAssociationHints(props: LiveQuestionTypeProps) {
       />
 
       <div className="live-hints-stage">
+        <div className="live-hints-stage__header">
+          <span className="live-hints-stage__title">
+            <Lightbulb size={18} aria-hidden="true" />
+            רמזים שנחשפו
+          </span>
+          <span className="live-hints-stage__count">
+            {visibleHints.length} מתוך {hints.length}
+          </span>
+        </div>
+
         <AnimatePresence initial={false}>
           <motion.ol layout className="live-hints-grid" aria-live="polite">
             {visibleHints.map((hint, index) => (
@@ -52,9 +62,10 @@ export function LiveAssociationHints(props: LiveQuestionTypeProps) {
                   mass: 0.86,
                 }}
                 className="live-hint-card"
+                data-current={index === visibleHints.length - 1}
               >
                 <span className="live-hint-card__icon" aria-hidden="true">
-                  <Lightbulb size={18} />
+                  {String(index + 1).padStart(2, '0')}
                 </span>
                 <div className="live-hint-card__copy">
                   <span className="live-hint-card__label">
@@ -74,7 +85,14 @@ export function LiveAssociationHints(props: LiveQuestionTypeProps) {
         ) : null}
       </div>
 
-      <AnswerSelection {...props} compact />
+      <div className="live-association__answers">
+        <div className="live-association__answers-label" aria-hidden="true">
+          <span />
+          אפשרויות תשובה
+          <span />
+        </div>
+        <AnswerSelection {...props} compact />
+      </div>
     </section>
   );
 }

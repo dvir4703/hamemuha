@@ -67,22 +67,3 @@ export function getCelebrationMessage(
   }
   return `${prefix}שיחקתם יפה! בפעם הבאה תדעו עוד יותר!`;
 }
-
-export function createScoreboardFileName(
-  quizName: string,
-  date = new Date(),
-): string {
-  const datePart = [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, '0'),
-    String(date.getDate()).padStart(2, '0'),
-  ].join('-');
-  const safeQuizName = quizName
-    .trim()
-    .replace(/[<>:"/\\|?*]/g, '-')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-
-  return `${safeQuizName || 'החידון'}-תוצאות-${datePart}.png`;
-}

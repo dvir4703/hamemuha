@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { dialog, ipcMain } from 'electron';
 
 import {
   createContestant,
@@ -26,7 +26,6 @@ import {
   updateQuestion,
 } from '../database/dal/questions';
 import { getGameResultById, saveGameResult } from '../database/dal/results';
-import { saveScoreboardImage } from '../services/export.service';
 import {
   getImageDataUrl,
   getImageUrl,
@@ -101,10 +100,6 @@ export function registerIpcHandlers(): void {
   );
   ipcMain.handle('result:getById', (_event, id: number) =>
     getGameResultById(requirePositiveId(id)),
-  );
-
-  ipcMain.handle('export:saveScoreboardImage', (event, data) =>
-    saveScoreboardImage(data, BrowserWindow.fromWebContents(event.sender)),
   );
 
   ipcMain.handle(

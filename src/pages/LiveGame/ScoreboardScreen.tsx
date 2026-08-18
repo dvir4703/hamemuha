@@ -1,27 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import confetti from 'canvas-confetti';
-import {
-  Crown,
-  Download,
-  Home,
-  LoaderCircle,
-  Medal,
-  Star,
-  Trophy,
-} from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Crown, Home, LoaderCircle, Medal, Star, Trophy } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Howl } from 'howler';
 
 import companyLogo from '../../assets/images/company-logo.png';
 import scoreboardSoundUrl from '../../assets/sounds/scoreboard.mp3?url';
-import { Toast } from '../../components/ui/Toast';
 import type { ContestantLiveStats } from '../../store/liveStore';
 import '../../styles/live-results.css';
 import type { Contestant, Quiz } from '../../types';
 import {
   buildScoreboardEntries,
   calculateAverageSuccessRate,
-  createScoreboardFileName,
   getCelebrationMessage,
 } from '../../utils/scoreboard';
 
@@ -36,27 +26,11 @@ interface ScoreboardScreenProps {
 
 const SCOREBOARD_ROW_STAGGER_MS = 380;
 const SCOREBOARD_REVEAL_LEAD_MS = 520;
-const SCOREBOARD_WINNER_SETTLE_MS = 760;
 const scoreboardConfetti = confetti.create(undefined, {
   resize: true,
   useWorker: false,
   disableForReducedMotion: true,
 });
-
-async function waitForImages(element: HTMLElement): Promise<void> {
-  const images = Array.from(element.querySelectorAll('img'));
-  await Promise.all(
-    images.map((image) => image.decode().catch(() => undefined)),
-  );
-}
-
-async function waitForVisualFrame(): Promise<void> {
-  await new Promise<void>((resolve) => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => resolve());
-    });
-  });
-}
 
 function rankTone(rank: number): 'second' | 'third' | 'standard' {
   if (rank === 2) return 'second';
@@ -72,14 +46,7 @@ export function ScoreboardScreen({
   isSavingResults,
   onReturnHome,
 }: ScoreboardScreenProps) {
-  const exportRef = useRef<HTMLElement>(null);
   const shouldReduceMotion = useReducedMotion();
-  const [isExporting, setIsExporting] = useState(false);
-  const [revealComplete, setRevealComplete] = useState(
-    Boolean(shouldReduceMotion),
-  );
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
   const entries = useMemo(
     () =>
       buildScoreboardEntries(
@@ -112,16 +79,6 @@ export function ScoreboardScreen({
       sound.unload();
     };
   }, []);
-
-  useEffect(() => {
-    const timeout = window.setTimeout(
-      () => setRevealComplete(true),
-      shouldReduceMotion
-        ? 0
-        : winnerRevealDelayMs + SCOREBOARD_WINNER_SETTLE_MS,
-    );
-    return () => window.clearTimeout(timeout);
-  }, [shouldReduceMotion, winnerRevealDelayMs]);
 
   useEffect(() => {
     if (
@@ -175,50 +132,6 @@ export function ScoreboardScreen({
     };
   }, [shouldReduceMotion, winner, winnerRevealDelayMs]);
 
-  const handleSaveImage = async () => {
-    const exportElement = exportRef.current;
-    if (!exportElement || isExporting || isSavingResults) return;
-
-    setIsExporting(true);
-    setExportError(null);
-    try {
-      await document.fonts.ready;
-      await waitForImages(exportElement);
-      await waitForVisualFrame();
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(exportElement, {
-        backgroundColor: '#050713',
-        scale: Math.min(2, Math.max(1.5, window.devicePixelRatio)),
-        useCORS: true,
-        logging: false,
-        imageTimeout: 6000,
-        onclone: (clonedDocument) => {
-          clonedDocument
-            .querySelector('[data-scoreboard-export]')
-            ?.setAttribute('data-exporting-image', 'true');
-        },
-      });
-      const result = await window.api.export.saveScoreboardImage({
-        dataUrl: canvas.toDataURL('image/png'),
-        defaultFileName: createScoreboardFileName(
-          quiz?.name ?? 'החידון-והחוויה',
-        ),
-      });
-
-      if (result.saved) {
-        setToastMessage('תמונת התוצאות נשמרה בהצלחה');
-      }
-    } catch (error) {
-      setExportError(
-        error instanceof Error
-          ? error.message
-          : 'שמירת תמונת התוצאות לא הושלמה.',
-      );
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   return (
     <div className="live-scoreboard">
       <div className="live-scoreboard__atmosphere" aria-hidden="true">
@@ -229,11 +142,7 @@ export function ScoreboardScreen({
 
       <main className="live-scoreboard__main">
         <section
-          ref={exportRef}
-          className={`live-scoreboard__export ${
-            revealComplete ? 'scoreboard-reveal-complete' : ''
-          }`}
-          data-scoreboard-export
+          className="live-scoreboard__panel"
           aria-labelledby="scoreboard-title"
         >
           <div className="live-scoreboard__stage-rings" aria-hidden="true" />
@@ -404,61 +313,23 @@ export function ScoreboardScreen({
         </section>
 
         <div className="live-scoreboard__actions">
+          {isSavingResults ? (
+            <p className="live-scoreboard__saving">
+              <LoaderCircle className="animate-spin" size={17} />
+              שומרים את תוצאות המשחק…
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={onReturnHome}
-            disabled={isSavingResults || isExporting}
-            className="live-scoreboard__button live-scoreboard__button--secondary"
+            disabled={isSavingResults}
+            className="live-scoreboard__button live-scoreboard__button--primary"
           >
             <Home size={20} aria-hidden="true" />
             חזרה לתפריט הראשי
           </button>
-
-          <div>
-            {isSavingResults ? (
-              <p className="live-scoreboard__saving">
-                <LoaderCircle className="animate-spin" size={17} />
-                שומרים את תוצאות המשחק…
-              </p>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => void handleSaveImage()}
-              disabled={
-                isSavingResults || isExporting || !revealComplete || !winner
-              }
-              className="live-scoreboard__button live-scoreboard__button--primary"
-            >
-              {isExporting ? (
-                <LoaderCircle className="animate-spin" size={20} />
-              ) : (
-                <Download size={20} aria-hidden="true" />
-              )}
-              {isExporting
-                ? 'מכינים את התמונה…'
-                : revealComplete
-                  ? 'שמור כתמונה'
-                  : 'חושפים את הדירוג…'}
-            </button>
-          </div>
         </div>
-
-        {exportError ? (
-          <p className="live-scoreboard__error" role="alert">
-            {exportError}
-          </p>
-        ) : null}
       </main>
-
-      <AnimatePresence>
-        {toastMessage ? (
-          <Toast
-            key={toastMessage}
-            message={toastMessage}
-            onClose={() => setToastMessage(null)}
-          />
-        ) : null}
-      </AnimatePresence>
     </div>
   );
 }

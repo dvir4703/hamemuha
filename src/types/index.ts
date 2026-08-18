@@ -112,16 +112,6 @@ export interface GameResultWithContestants extends GameResult {
   contestantResults: ContestantResult[];
 }
 
-export interface SaveScoreboardImageInput {
-  dataUrl: string;
-  defaultFileName: string;
-}
-
-export interface SaveScoreboardImageResult {
-  saved: boolean;
-  filePath: string | null;
-}
-
 export interface QuizMutationInput {
   name: string;
 }
@@ -204,11 +194,6 @@ export interface ElectronApi {
       data: SaveGameResultInput,
     ) => Promise<GameResultWithContestants>;
     getById: (id: number) => Promise<GameResultWithContestants | null>;
-  };
-  export: {
-    saveScoreboardImage: (
-      data: SaveScoreboardImageInput,
-    ) => Promise<SaveScoreboardImageResult>;
   };
   file: {
     selectAndSaveImage: (category: string) => Promise<string | null>;
