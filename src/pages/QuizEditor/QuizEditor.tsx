@@ -18,6 +18,7 @@ import {
   AlertCircle,
   ArrowRight,
   Check,
+  Copy,
   FileQuestion,
   LoaderCircle,
   Pencil,
@@ -80,6 +81,9 @@ export default function QuizEditor() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
+  const [duplicatingContestantId, setDuplicatingContestantId] = useState<
+    number | null
+  >(null);
   const [isReordering, setIsReordering] = useState(false);
 
   const sensors = useSensors(
@@ -266,6 +270,26 @@ export default function QuizEditor() {
       setError(getErrorMessage(duplicateError));
     } finally {
       setDuplicatingId(null);
+    }
+  };
+
+  const duplicateContestant = async (contestant: Contestant) => {
+    setDuplicatingContestantId(contestant.id);
+    try {
+      const duplicated = await window.api.contestant.duplicate(contestant.id);
+      const [refreshedContestants, refreshedQuestions] = await Promise.all([
+        window.api.contestant.getByQuizId(quizId),
+        window.api.question.getByQuizId(quizId),
+      ]);
+      setContestants(refreshedContestants);
+      setQuestions(refreshedQuestions);
+      setSelectedContestantId(duplicated.id);
+      setFilter('all');
+      setToast('שוכפל בהצלחה');
+    } catch (duplicateError) {
+      setError(getErrorMessage(duplicateError));
+    } finally {
+      setDuplicatingContestantId(null);
     }
   };
 
@@ -645,6 +669,19 @@ export default function QuizEditor() {
                   className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-bold hover:bg-white/15"
                 >
                   <Pencil size={16} /> שינוי שם
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void duplicateContestant(selectedContestant)}
+                  disabled={duplicatingContestantId === selectedContestant.id}
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-bold hover:bg-white/15 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {duplicatingContestantId === selectedContestant.id ? (
+                    <LoaderCircle className="animate-spin" size={16} />
+                  ) : (
+                    <Copy size={16} />
+                  )}
+                  שכפל מתמודד
                 </button>
                 <button
                   type="button"

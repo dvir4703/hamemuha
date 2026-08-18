@@ -13,6 +13,12 @@ registerImageScheme();
 
 let mainWindow: BrowserWindow | null = null;
 
+function getRuntimeIconPath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'app-icon.png')
+    : join(__dirname, '../resources/app-icon.png');
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -20,6 +26,7 @@ function createWindow(): void {
     minWidth: 960,
     minHeight: 640,
     show: false,
+    icon: getRuntimeIconPath(),
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -47,6 +54,7 @@ void app.whenReady().then(() => {
   databaseConnection.getConnection();
   registerImageProtocol();
   registerIpcHandlers();
+  app.dock?.setIcon(getRuntimeIconPath());
   createWindow();
 
   app.on('activate', () => {

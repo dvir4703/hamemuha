@@ -1894,6 +1894,7 @@
 
 .live-question-timer__face strong {
   min-width: 1.4ch;
+  text-align: center;
   font-family: 'Rubik Variable', Arial, sans-serif;
   font-size: clamp(1.7rem, 3.2vh, 2.35rem);
   font-variant-numeric: tabular-nums;

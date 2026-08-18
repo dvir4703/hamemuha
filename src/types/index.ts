@@ -185,6 +185,7 @@ export interface ElectronApi {
       data: ContestantUpdateInput,
     ) => Promise<Contestant | null>;
     delete: (id: number) => Promise<boolean>;
+    duplicate: (id: number) => Promise<Contestant>;
   };
   question: {
     getByQuizId: (quizId: number) => Promise<QuestionSummaryWithRelations[]>;

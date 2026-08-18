@@ -8,8 +8,12 @@ files:
   - package.json
 asarUnpack:
   - node_modules/better-sqlite3/**/*
+extraResources:
+  - from: resources/app-icon.png
+    to: app-icon.png
 win:
   target: nsis
+  icon: resources/app-icon.ico
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

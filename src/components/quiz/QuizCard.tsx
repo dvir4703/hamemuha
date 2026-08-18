@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Copy,
-  FileQuestion,
   ListChecks,
   MoreVertical,
   Pencil,
@@ -144,18 +143,13 @@ export function QuizCard({ quiz, onDelete, onDuplicate }: QuizCardProps) {
         className="block w-full rounded-b-[24px] px-5 pb-5 pt-6 text-right focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal"
         aria-label={`פתיחת החידון ${quiz.name}`}
       >
-        <div className="mb-5 flex items-start gap-4 pl-9">
-          <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-[20px] bg-canvas text-teal ring-1 ring-ink/[0.06]">
-            <FileQuestion size={30} strokeWidth={1.8} aria-hidden="true" />
-          </div>
-          <div className="min-w-0 pt-1">
-            <h2 className="line-clamp-2 font-display text-xl font-bold leading-7 text-ink">
-              {quiz.name}
-            </h2>
-            <p className="mt-1.5 text-sm text-ink/50">
-              {formatRelativeDate(quiz.updated_at)}
-            </p>
-          </div>
+        <div className="mb-4 min-w-0 pl-9 pr-1">
+          <h2 className="line-clamp-2 font-display text-xl font-bold leading-7 text-ink">
+            {quiz.name}
+          </h2>
+          <p className="mt-1.5 text-sm text-ink/50">
+            {formatRelativeDate(quiz.updated_at)}
+          </p>
         </div>
 
         <div className="flex items-center gap-5 rounded-2xl bg-canvas/80 px-4 py-3 text-sm text-ink/65">

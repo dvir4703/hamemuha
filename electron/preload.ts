@@ -18,6 +18,7 @@ const api: ElectronApi = {
     create: (data) => ipcRenderer.invoke('contestant:create', data),
     update: (id, data) => ipcRenderer.invoke('contestant:update', id, data),
     delete: (id) => ipcRenderer.invoke('contestant:delete', id),
+    duplicate: (id) => ipcRenderer.invoke('contestant:duplicate', id),
   },
   question: {
     getByQuizId: (quizId) => ipcRenderer.invoke('question:getByQuizId', quizId),

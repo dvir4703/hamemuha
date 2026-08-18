@@ -3,6 +3,7 @@ import { BrowserWindow, dialog, ipcMain } from 'electron';
 import {
   createContestant,
   deleteContestant,
+  duplicateContestant,
   getContestantsByQuizId,
   updateContestant,
 } from '../database/dal/contestants';
@@ -68,6 +69,9 @@ export function registerIpcHandlers(): void {
   );
   ipcMain.handle('contestant:delete', (_event, id: number) =>
     deleteContestant(requirePositiveId(id)),
+  );
+  ipcMain.handle('contestant:duplicate', (_event, id: number) =>
+    duplicateContestant(requirePositiveId(id)),
   );
 
   ipcMain.handle('question:getByQuizId', (_event, quizId: number) =>
