@@ -1,12 +1,16 @@
-import { useCallback, useRef, type SyntheticEvent } from 'react';
+import { useCallback, useEffect, useRef, type SyntheticEvent } from 'react';
 
 import introVideoUrl from '../../assets/videos/intro.mp4';
 
 interface IntroVideoScreenProps {
+  enabled?: boolean;
   onComplete: () => void;
 }
 
-export function IntroVideoScreen({ onComplete }: IntroVideoScreenProps) {
+export function IntroVideoScreen({
+  enabled = true,
+  onComplete,
+}: IntroVideoScreenProps) {
   const hasCompletedRef = useRef(false);
 
   const completeIntro = useCallback(() => {
@@ -14,6 +18,18 @@ export function IntroVideoScreen({ onComplete }: IntroVideoScreenProps) {
     hasCompletedRef.current = true;
     onComplete();
   }, [onComplete]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' || event.repeat) return;
+      event.preventDefault();
+      completeIntro();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [completeIntro, enabled]);
 
   const handleVideoError = useCallback(
     (event: SyntheticEvent<HTMLVideoElement>) => {

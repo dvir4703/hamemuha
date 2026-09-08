@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   mkdtempSync,
+  copyFileSync,
   readFileSync,
   writeFileSync,
   rmSync,
@@ -57,6 +58,15 @@ for (const [index, type] of types.entries()) {
     }
   }
 }
+const legacyImageDirectory = join(temporary, 'images', 'question-images');
+mkdirSync(legacyImageDirectory, { recursive: true });
+copyFileSync(
+  resolve('src/assets/images/company-logo.png'),
+  join(legacyImageDirectory, 'existing.png'),
+);
+db.prepare(
+  "UPDATE questions SET image_path = 'images/question-images/existing.png' WHERE id IN (1, 6)",
+).run();
 db.prepare(
   "INSERT INTO hints (question_id, hint_type, hint_text, hint_order, points_penalty) VALUES (3, 'letter_reveal', '1', 1, 2)",
 ).run();
@@ -67,7 +77,12 @@ db.close();
 const launcher = join(temporary, 'launcher.cjs');
 writeFileSync(
   launcher,
-  `const { app } = require('electron');\napp.setPath('userData', ${JSON.stringify(temporary)});\nrequire(${JSON.stringify(resolve('dist-electron/main.js'))});\n`,
+  `const electron = require('electron');\nconst mediaSelections = ${JSON.stringify(
+    [
+      resolve('src/assets/videos/intro.mp4'),
+      resolve('src/assets/sounds/timer-countdown.mp3'),
+    ],
+  )};\nelectron.dialog.showOpenDialog = async (options) => {\n  if (options.title !== 'בחירת מדיה לשאלה') throw new Error('Unexpected file dialog');\n  const filePath = mediaSelections.shift();\n  return filePath ? { canceled: false, filePaths: [filePath] } : { canceled: true, filePaths: [] };\n};\nelectron.app.setPath('userData', ${JSON.stringify(temporary)});\nrequire(${JSON.stringify(resolve('dist-electron/main.js'))});\n`,
 );
 let app;
 const errors = [];
@@ -89,6 +104,32 @@ try {
   };
   page.on('pageerror', (error) => errors.push(error.message));
   await page.waitForFunction(() => Boolean(window.api));
+  await expect(
+    page.getByRole('button', { name: 'הפעלת החידון בדיקת לייב' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'הפעלת החידון בדיקת לייב' }).click();
+  await page.waitForURL('**#/quiz/1/live');
+  await expect(page.locator('.live-opening')).toBeVisible();
+  await expect(page.getByRole('img', { name: /החידון והחוויה/ })).toBeVisible();
+  await expect(page.getByText('התחל!', { exact: true })).toBeVisible();
+  await screenshot('opening-branding.png');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.live-intro-video__media')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.live-question__media img')).toBeVisible();
+  await page.waitForFunction(
+    () => document.querySelector('.live-question__media img')?.naturalWidth > 0,
+  );
+  await page.evaluate(() => {
+    location.hash = '/';
+  });
+  await page.getByRole('button', { name: 'פתיחת החידון בדיקת לייב' }).click();
+  await page.waitForURL('**#/quizzes/1/edit');
+  await screenshot('quiz-editor-numbers.png');
+  console.log(
+    'PASS: direct play, card edit navigation, opening copy/logo, Enter intro skip and legacy image media',
+  );
+
   const migrated = await page.evaluate(() => window.api.question.getById(3));
   assert.equal(migrated.prerevealed_positions, '[]');
   assert.equal(
@@ -98,6 +139,60 @@ try {
   console.log(
     'PASS: legacy database migrated without deleting association hints',
   );
+
+  const firstQuestion = page
+    .locator('article')
+    .filter({ hasText: 'שאלה 1 — multiple_choice' });
+  await expect(firstQuestion.getByLabel('שאלה מספר 1')).toBeVisible();
+  await page.evaluate(() => window.api.question.reorder(1, [2, 1, 3, 4, 5, 6]));
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.api));
+  await expect(firstQuestion.getByLabel('שאלה מספר 2')).toBeVisible();
+  await page.evaluate(() => window.api.question.reorder(1, [1, 2, 3, 4, 5, 6]));
+  console.log('PASS: question numbering updates after persisted reorder');
+
+  const targetContestant = await page.evaluate(() =>
+    window.api.contestant.create({
+      quizId: 1,
+      name: 'מתמודד יעד',
+      displayOrder: 2,
+    }),
+  );
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.api));
+  await expect(
+    page.getByRole('heading', { name: 'השאלות של מתמודד בדיקה' }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', {
+      name: /שכפול שאלה 6 — association_hints/,
+    })
+    .click();
+  await screenshot('duplicate-question-dialog.png');
+  await page.getByLabel('מתמודד יעד').selectOption(String(targetContestant.id));
+  await page.getByRole('button', { name: 'יצירת עותק' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'השאלות של מתמודד יעד' }),
+  ).toBeVisible();
+  const copiedToTarget = await page.evaluate(
+    async (contestantId) =>
+      (await window.api.question.getByQuizId(1)).find(
+        (question) => question.contestant_id === contestantId,
+      ),
+    targetContestant.id,
+  );
+  assert.equal(copiedToTarget.display_order, 1);
+  assert.equal(copiedToTarget.answers.length, 6);
+  assert.equal(copiedToTarget.hints.length, 1);
+  assert.equal(
+    copiedToTarget.image_path,
+    'images/question-images/existing.png',
+  );
+  await page.evaluate(
+    (contestantId) => window.api.contestant.delete(contestantId),
+    targetContestant.id,
+  );
+  console.log('PASS: target contestant dialog and full deep-copy');
 
   // Exercise the real editor -> preload IPC -> SQLite -> edit hydration boundary.
   await page.evaluate(() => {
@@ -126,6 +221,32 @@ try {
       .getByRole('button', { name: 'א, מיקום 1', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
   console.log('PASS: editor multi-letter hint/prerevealed save and hydration');
+
+  const typeChangeCopy = await page.evaluate(() =>
+    window.api.question.duplicate(3),
+  );
+  await page.evaluate((id) => {
+    location.hash = `/quizzes/1/questions/${id}/edit`;
+  }, typeChangeCopy.id);
+  await page.getByRole('combobox').first().selectOption('open_answer');
+  await expect(page.getByLabel('התשובה הנכונה')).toHaveValue('');
+  await page.getByLabel('התשובה הנכונה').fill('תשובה אחרי שינוי סוג');
+  await page.getByRole('button', { name: 'שמירת שאלה' }).click();
+  await page.waitForURL('**#/quizzes/1/edit');
+  const changedType = await page.evaluate(
+    (id) => window.api.question.getById(id),
+    typeChangeCopy.id,
+  );
+  assert.equal(changedType.question_type, 'open_answer');
+  assert.equal(changedType.correct_answer_text, 'תשובה אחרי שינוי סוג');
+  assert.equal(changedType.answers.length, 0);
+  assert.equal(changedType.hints.length, 0);
+  assert.equal(changedType.prerevealed_positions, '[]');
+  await page.evaluate(
+    (id) => window.api.question.delete(id),
+    typeChangeCopy.id,
+  );
+  console.log('PASS: changing type resets old type-specific data');
 
   // All three copy paths must carry the new field.
   const copies = await page.evaluate(async () => {
@@ -171,6 +292,76 @@ try {
   );
 
   await page.evaluate(() => {
+    location.hash = '/quizzes/1/questions/1/edit';
+  });
+  await expect(page.locator('img[alt="תצוגה מקדימה"]')).toBeVisible();
+  await page.getByRole('button', { name: 'החלפת מדיה' }).click();
+  await expect(page.getByLabel('תצוגה מקדימה של הווידאו')).toBeVisible();
+  await page.getByRole('button', { name: 'שמירת שאלה' }).click();
+  await page.waitForURL('**#/quizzes/1/edit');
+  assert.match(
+    (await page.evaluate(() => window.api.question.getById(1))).image_path,
+    /^media\/question-media\/.+\.mp4$/,
+  );
+  await page.evaluate(() => {
+    location.hash = '/quiz/1/live';
+  });
+  await expect(page.locator('.live-opening')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.live-intro-video__media')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('וידאו מצורף לשאלה')).toBeVisible();
+  await page.waitForTimeout(1200);
+  const videoState = await page
+    .getByLabel('וידאו מצורף לשאלה')
+    .evaluate((media) => ({
+      currentSrc: media.currentSrc,
+      errorCode: media.error?.code ?? null,
+      errorMessage: media.error?.message ?? null,
+      networkState: media.networkState,
+      readyState: media.readyState,
+    }));
+  assert.ok(videoState.readyState >= 1, JSON.stringify(videoState));
+  await screenshot('question-video.png');
+
+  await page.evaluate(() => {
+    location.hash = '/quizzes/1/questions/1/edit';
+  });
+  await page.getByRole('button', { name: 'החלפת מדיה' }).click();
+  await expect(page.getByLabel('תצוגה מקדימה של האודיו')).toBeVisible();
+  await page.getByRole('button', { name: 'שמירת שאלה' }).click();
+  await page.waitForURL('**#/quizzes/1/edit');
+  assert.match(
+    (await page.evaluate(() => window.api.question.getById(1))).image_path,
+    /^media\/question-media\/.+\.mp3$/,
+  );
+  await page.evaluate(() => {
+    location.hash = '/quiz/1/live';
+  });
+  await expect(page.locator('.live-opening')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.live-intro-video__media')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('אודיו מצורף לשאלה')).toBeVisible();
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[aria-label="אודיו מצורף לשאלה"]')?.readyState >=
+      1,
+  );
+  await screenshot('question-audio.png');
+  await page.evaluate(() => {
+    location.hash = '/quizzes/1/questions/1/edit';
+  });
+  await page.getByRole('button', { name: 'הסרת מדיה' }).click();
+  await page.getByRole('button', { name: 'שמירת שאלה' }).click();
+  await page.waitForURL('**#/quizzes/1/edit');
+  assert.equal(
+    (await page.evaluate(() => window.api.question.getById(1))).image_path,
+    null,
+  );
+  console.log('PASS: image, MP4 and MP3 editor/live media flow');
+
+  await page.evaluate(() => {
     window.__audioStarts = [];
     const original = AudioBufferSourceNode.prototype.start;
     AudioBufferSourceNode.prototype.start = function (...args) {
@@ -185,12 +376,8 @@ try {
   });
   await expect(page.locator('.live-opening')).toBeVisible();
   await page.keyboard.press('Enter');
-  const video = page.locator('video');
-  await expect(video).toBeVisible();
-  await video.evaluate((element) => {
-    element.pause();
-    element.dispatchEvent(new Event('ended'));
-  });
+  await expect(page.locator('.live-intro-video__media')).toBeVisible();
+  await page.keyboard.press('Enter');
   await expect(page.locator('.live-answer-tile')).toHaveCount(6, {
     timeout: 2000,
   });
@@ -286,6 +473,8 @@ try {
     await page.keyboard.press('Enter');
   }
   await expect(page.locator('.live-scoreboard')).toBeVisible();
+  await expect(page.getByRole('img', { name: /החידון והחוויה/ })).toBeVisible();
+  await screenshot('scoreboard-branding.png');
   const results = new DatabaseSync(databasePath);
   const savedStats = results
     .prepare('SELECT * FROM contestant_results ORDER BY id DESC LIMIT 1')

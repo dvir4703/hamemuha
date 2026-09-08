@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Clock3,
   LoaderCircle,
-  LockKeyhole,
   Save,
   Sparkles,
   UserRound,
@@ -25,13 +24,13 @@ import {
   type FieldErrors,
   type HintDraft,
 } from '../../components/quiz/QuestionTypeFields/types';
-import { QuestionImagePicker } from '../../components/quiz/QuestionImagePicker';
+import { QuestionMediaPicker } from '../../components/quiz/QuestionMediaPicker';
 import { TimeLimitStepper } from '../../components/quiz/TimeLimitStepper';
 import {
   QUESTION_TYPE_META,
   QUESTION_TYPE_ORDER,
 } from '../../components/quiz/questionTypes';
-import { useImageUrl } from '../../hooks/useImageUrl';
+import { useMediaUrl } from '../../hooks/useMediaUrl';
 import type {
   Contestant,
   QuestionMutationInput,
@@ -94,8 +93,8 @@ export default function QuestionForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSelectingImage, setIsSelectingImage] = useState(false);
-  const imageUrl = useImageUrl(imagePath);
+  const [isSelectingMedia, setIsSelectingMedia] = useState(false);
+  const mediaUrl = useMediaUrl(imagePath);
   const typeMeta = QUESTION_TYPE_META[questionType];
   const TypeIcon = typeMeta.icon;
 
@@ -195,6 +194,7 @@ export default function QuestionForm() {
   }, [questionId, quizId, searchParams]);
 
   const resetTypeSpecificFields = (type: QuestionType) => {
+    if (type === questionType) return;
     setQuestionType(type);
     setCorrectAnswerText('');
     setShuffleAnswers(false);
@@ -205,18 +205,18 @@ export default function QuestionForm() {
     setErrors({});
   };
 
-  const selectImage = async () => {
-    setIsSelectingImage(true);
+  const selectMedia = async () => {
+    setIsSelectingMedia(true);
     try {
-      const path = await window.api.file.selectAndSaveImage('question-images');
+      const path = await window.api.file.selectAndSaveMedia('question-media');
       if (path) setImagePath(path);
-    } catch (imageError) {
+    } catch (mediaError) {
       setErrors((current) => ({
         ...current,
-        form: getErrorMessage(imageError),
+        form: getErrorMessage(mediaError),
       }));
     } finally {
-      setIsSelectingImage(false);
+      setIsSelectingMedia(false);
     }
   };
 
@@ -419,13 +419,14 @@ export default function QuestionForm() {
         return (
           <MultipleOptionsFields
             centralText={questionText}
-            imageUrl={imageUrl}
-            isSelectingImage={isSelectingImage}
+            mediaPath={imagePath}
+            mediaUrl={mediaUrl}
+            isSelectingMedia={isSelectingMedia}
             answers={answers}
             errors={errors}
             onCentralTextChange={setQuestionText}
-            onSelectImage={() => void selectImage()}
-            onRemoveImage={() => setImagePath(null)}
+            onSelectMedia={() => void selectMedia()}
+            onRemoveMedia={() => setImagePath(null)}
             onAnswersChange={setAnswers}
           />
         );
@@ -444,8 +445,9 @@ export default function QuestionForm() {
     prerevealedPositions,
     errors,
     hints,
-    imageUrl,
-    isSelectingImage,
+    imagePath,
+    mediaUrl,
+    isSelectingMedia,
     questionText,
     questionType,
     shuffleAnswers,
@@ -537,21 +539,15 @@ export default function QuestionForm() {
         <section className="mb-6 overflow-hidden rounded-[28px] bg-hero p-5 text-white shadow-hero lg:p-6">
           <div className="grid items-end gap-5 lg:grid-cols-[minmax(0,24rem)_1fr]">
             <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-sm font-bold text-white/70">
-                סוג השאלה{' '}
-                {isEditing ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-mint">
-                    <LockKeyhole size={12} /> נעול בעריכה
-                  </span>
-                ) : null}
+              <span className="mb-2 block text-sm font-bold text-white/70">
+                סוג השאלה
               </span>
               <select
                 value={questionType}
-                disabled={isEditing}
                 onChange={(event) =>
                   resetTypeSpecificFields(event.target.value as QuestionType)
                 }
-                className="w-full rounded-2xl border border-white/10 bg-white px-4 py-3.5 font-display text-base font-black text-ink outline-none focus:ring-4 focus:ring-mint/20 disabled:cursor-not-allowed disabled:bg-white/90"
+                className="w-full rounded-2xl border border-white/10 bg-white px-4 py-3.5 font-display text-base font-black text-ink outline-none focus:ring-4 focus:ring-mint/20"
               >
                 {QUESTION_TYPE_ORDER.map((type) => (
                   <option key={type} value={type}>
@@ -572,9 +568,8 @@ export default function QuestionForm() {
                   <button
                     key={type}
                     type="button"
-                    disabled={isEditing}
                     onClick={() => resetTypeSpecificFields(type)}
-                    className={`flex min-w-28 flex-1 flex-col items-center gap-2 rounded-2xl px-3 py-3 text-center transition ${active ? 'bg-white text-ink shadow-lg' : 'bg-white/[0.07] text-white/55 hover:bg-white/10 hover:text-white'} disabled:cursor-default`}
+                    className={`flex min-w-28 flex-1 flex-col items-center gap-2 rounded-2xl px-3 py-3 text-center transition ${active ? 'bg-white text-ink shadow-lg' : 'bg-white/[0.07] text-white/55 hover:bg-white/10 hover:text-white'}`}
                     aria-pressed={active}
                   >
                     <Icon
@@ -631,10 +626,11 @@ export default function QuestionForm() {
                   </p>
                 ) : null}
                 <div className="mt-6">
-                  <QuestionImagePicker
-                    imageUrl={imageUrl}
-                    isSelecting={isSelectingImage}
-                    onSelect={() => void selectImage()}
+                  <QuestionMediaPicker
+                    mediaPath={imagePath}
+                    mediaUrl={mediaUrl}
+                    isSelecting={isSelectingMedia}
+                    onSelect={() => void selectMedia()}
                     onRemove={() => setImagePath(null)}
                   />
                 </div>

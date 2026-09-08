@@ -14,6 +14,7 @@ import { QUESTION_TYPE_META } from './questionTypes';
 
 interface SortableQuestionItemProps {
   question: QuestionSummary;
+  questionNumber: number;
   dragDisabled: boolean;
   isDuplicating: boolean;
   onEdit: () => void;
@@ -23,6 +24,7 @@ interface SortableQuestionItemProps {
 
 export function SortableQuestionItem({
   question,
+  questionNumber,
   dragDisabled,
   isDuplicating,
   onEdit,
@@ -44,7 +46,7 @@ export function SortableQuestionItem({
     <article
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`group grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-4 rounded-[22px] border bg-white px-4 py-4 shadow-sm transition-shadow ${
+      className={`group grid grid-cols-[auto_auto_auto_minmax(0,1fr)_auto] items-center gap-4 rounded-[22px] border bg-white px-4 py-4 shadow-sm transition-shadow ${
         isDragging
           ? 'z-20 border-teal/30 shadow-card-hover'
           : 'border-ink/[0.07] hover:shadow-card'
@@ -69,6 +71,13 @@ export function SortableQuestionItem({
       >
         <GripVertical size={21} aria-hidden="true" />
       </button>
+
+      <span
+        className="grid h-9 min-w-9 place-items-center rounded-xl bg-ink px-2 font-display text-sm font-black text-white"
+        aria-label={`שאלה מספר ${questionNumber}`}
+      >
+        {questionNumber}
+      </span>
 
       <span
         className={`grid h-12 w-12 place-items-center rounded-2xl ${meta.surfaceClass} ${meta.accentClass}`}

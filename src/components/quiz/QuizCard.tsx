@@ -4,6 +4,7 @@ import {
   ListChecks,
   MoreVertical,
   Pencil,
+  Play,
   Trash2,
   UsersRound,
 } from 'lucide-react';
@@ -140,7 +141,7 @@ export function QuizCard({ quiz, onDelete, onDuplicate }: QuizCardProps) {
         type="button"
         onClick={() => navigate(editPath)}
         disabled={isDuplicating}
-        className="block w-full rounded-b-[24px] px-5 pb-5 pt-6 text-right focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal"
+        className="block w-full px-5 pb-3 pt-6 text-right focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal"
         aria-label={`פתיחת החידון ${quiz.name}`}
       >
         <div className="mb-4 min-w-0 pl-9 pr-1">
@@ -170,6 +171,19 @@ export function QuizCard({ quiz, onDelete, onDuplicate }: QuizCardProps) {
           </span>
         </div>
       </button>
+
+      <div className="px-5 pb-5">
+        <button
+          type="button"
+          onClick={() => navigate(`/quiz/${quiz.id}/live`)}
+          disabled={isDuplicating}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-amber px-4 py-3 font-display font-black text-ink shadow-sm transition hover:bg-yellow-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:opacity-50"
+          aria-label={`הפעלת החידון ${quiz.name}`}
+        >
+          <Play size={19} fill="currentColor" aria-hidden="true" />
+          הפעל חידון
+        </button>
+      </div>
 
       {isDuplicating ? (
         <div className="absolute inset-0 z-10 grid place-items-center rounded-[24px] bg-white/85 backdrop-blur-[2px]">

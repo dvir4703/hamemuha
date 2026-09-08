@@ -3,6 +3,7 @@ import { Play } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 
 import companyLogo from '../../assets/images/company-logo.png';
+import businessLogo from '../../assets/images/לוגו יואב מעודכן.png';
 import type { Quiz } from '../../types';
 
 interface OpeningScreenProps {
@@ -59,12 +60,19 @@ export function OpeningScreen({
               damping: 18,
             }}
           >
-            <div className="live-opening__logo mx-auto mb-7 flex items-center justify-center sm:mb-9">
+            <div className="live-opening__brand-stack">
               <img
-                src={companyLogo}
-                alt="המומחה"
-                className="live-opening__logo-image"
+                src={businessLogo}
+                alt="החידון והחוויה — בניהולו של יואב שלוסברג"
+                className="live-opening__business-logo"
               />
+              <div className="live-opening__logo flex items-center justify-center">
+                <img
+                  src={companyLogo}
+                  alt="המומחה"
+                  className="live-opening__logo-image"
+                />
+              </div>
             </div>
           </motion.div>
 
@@ -127,7 +135,7 @@ export function OpeningScreen({
           >
             <Play className="relative" size={25} fill="currentColor" />
             <span className="relative">
-              {canStart ? 'לחצו Enter להתחלה' : 'אין מתמודדים בחידון'}
+              {canStart ? 'התחל!' : 'אין מתמודדים בחידון'}
             </span>
           </motion.button>
         </section>

@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { LiveQuestionRenderer } from '../src/components/live/LiveQuestionRenderer';
 import { AnswerFeedbackScreen } from '../src/components/live/AnswerFeedback/AnswerFeedbackScreen';
+import { IntroVideoScreen } from '../src/pages/LiveGame/IntroVideoScreen';
 import { useKeyboard } from '../src/hooks/useKeyboard';
 import { useQuestionAudio } from '../src/hooks/useQuestionAudio';
 import { useQuestionTimer } from '../src/hooks/useQuestionTimer';
@@ -70,6 +71,14 @@ function key(
 }
 
 describe('live controls and screens', () => {
+  it('skips the intro video with Enter and completes only once', () => {
+    const onComplete = vi.fn();
+    render(<IntroVideoScreen onComplete={onComplete} />);
+    key('Enter');
+    fireEvent.ended(screen.getByLabelText('סרטון פתיחת החידון'));
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
   for (const type of types) {
     it(`${type}: context gating, submission, manual feedback and no submit button`, () => {
       vi.useFakeTimers();

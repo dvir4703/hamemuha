@@ -1,30 +1,32 @@
 import { Focus } from 'lucide-react';
 
-import { QuestionImagePicker } from '../QuestionImagePicker';
+import { QuestionMediaPicker } from '../QuestionMediaPicker';
 import { AnswerOptionsEditor } from './AnswerOptionsEditor';
 import type { AnswerDraft, FieldErrors } from './types';
 
 interface MultipleOptionsFieldsProps {
   centralText: string;
-  imageUrl: string | null;
-  isSelectingImage: boolean;
+  mediaPath: string | null;
+  mediaUrl: string | null;
+  isSelectingMedia: boolean;
   answers: AnswerDraft[];
   errors: FieldErrors;
   onCentralTextChange: (value: string) => void;
-  onSelectImage: () => void;
-  onRemoveImage: () => void;
+  onSelectMedia: () => void;
+  onRemoveMedia: () => void;
   onAnswersChange: (answers: AnswerDraft[]) => void;
 }
 
 export function MultipleOptionsFields({
   centralText,
-  imageUrl,
-  isSelectingImage,
+  mediaPath,
+  mediaUrl,
+  isSelectingMedia,
   answers,
   errors,
   onCentralTextChange,
-  onSelectImage,
-  onRemoveImage,
+  onSelectMedia,
+  onRemoveMedia,
   onAnswersChange,
 }: MultipleOptionsFieldsProps) {
   return (
@@ -62,12 +64,13 @@ export function MultipleOptionsFields({
           </p>
         ) : null}
         <div className="mt-5">
-          <QuestionImagePicker
-            imageUrl={imageUrl}
-            isSelecting={isSelectingImage}
-            onSelect={onSelectImage}
-            onRemove={onRemoveImage}
-            label="תמונת האלמנט המרכזי (אופציונלי)"
+          <QuestionMediaPicker
+            mediaPath={mediaPath}
+            mediaUrl={mediaUrl}
+            isSelecting={isSelectingMedia}
+            onSelect={onSelectMedia}
+            onRemove={onRemoveMedia}
+            label="מדיית האלמנט המרכזי (אופציונלי)"
           />
         </div>
       </section>

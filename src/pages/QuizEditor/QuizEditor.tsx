@@ -38,6 +38,7 @@ import {
   QUESTION_TYPE_ORDER,
 } from '../../components/quiz/questionTypes';
 import { SortableQuestionItem } from '../../components/quiz/SortableQuestionItem';
+import { QuestionDuplicateDialog } from '../../components/quiz/QuestionDuplicateDialog';
 import { ActionConfirmDialog } from '../../components/ui/ActionConfirmDialog';
 import { Toast } from '../../components/ui/Toast';
 import type {
@@ -81,6 +82,10 @@ export default function QuizEditor() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
+  const [questionToDuplicate, setQuestionToDuplicate] =
+    useState<QuestionSummary | null>(null);
+  const [duplicateTargetContestantId, setDuplicateTargetContestantId] =
+    useState(0);
   const [duplicatingContestantId, setDuplicatingContestantId] = useState<
     number | null
   >(null);
@@ -149,6 +154,13 @@ export default function QuizEditor() {
             (question) => question.question_type === filter,
           ),
     [filter, selectedQuestions],
+  );
+  const questionNumberById = useMemo(
+    () =>
+      new Map(
+        selectedQuestions.map((question, index) => [question.id, index + 1]),
+      ),
+    [selectedQuestions],
   );
   const questionCountByContestant = useMemo(() => {
     const counts = new Map<number, number>();
@@ -259,12 +271,19 @@ export default function QuizEditor() {
     }
   };
 
-  const duplicateQuestion = async (question: QuestionSummary) => {
-    setDuplicatingId(question.id);
+  const duplicateQuestion = async () => {
+    if (!questionToDuplicate || !duplicateTargetContestantId) return;
+    setDuplicatingId(questionToDuplicate.id);
     try {
-      await window.api.question.duplicate(question.id);
+      await window.api.question.duplicate(
+        questionToDuplicate.id,
+        duplicateTargetContestantId,
+      );
       const refreshed = await window.api.question.getByQuizId(quizId);
       setQuestions(refreshed);
+      setSelectedContestantId(duplicateTargetContestantId);
+      setFilter('all');
+      setQuestionToDuplicate(null);
       setToast('נוצר עותק חדש של השאלה');
     } catch (duplicateError) {
       setError(getErrorMessage(duplicateError));
@@ -764,6 +783,9 @@ export default function QuizEditor() {
                       <SortableQuestionItem
                         key={question.id}
                         question={question}
+                        questionNumber={
+                          questionNumberById.get(question.id) ?? 0
+                        }
                         dragDisabled={filter !== 'all' || isReordering}
                         isDuplicating={duplicatingId === question.id}
                         onEdit={() =>
@@ -771,7 +793,12 @@ export default function QuizEditor() {
                             `/quizzes/${quizId}/questions/${question.id}/edit`,
                           )
                         }
-                        onDuplicate={() => void duplicateQuestion(question)}
+                        onDuplicate={() => {
+                          setQuestionToDuplicate(question);
+                          setDuplicateTargetContestantId(
+                            question.contestant_id,
+                          );
+                        }}
                         onDelete={() =>
                           setDeleteTarget({ kind: 'question', question })
                         }
@@ -786,6 +813,17 @@ export default function QuizEditor() {
       </main>
 
       <AnimatePresence>
+        {questionToDuplicate ? (
+          <QuestionDuplicateDialog
+            question={questionToDuplicate}
+            contestants={contestants}
+            targetContestantId={duplicateTargetContestantId}
+            isWorking={duplicatingId === questionToDuplicate.id}
+            onTargetChange={setDuplicateTargetContestantId}
+            onCancel={() => setQuestionToDuplicate(null)}
+            onConfirm={() => void duplicateQuestion()}
+          />
+        ) : null}
         {deleteTarget ? (
           <ActionConfirmDialog
             title={

@@ -1614,6 +1614,27 @@
   }
 }
 
+.live-scoreboard__brand-stack {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+}
+
+.live-scoreboard__business-logo {
+  width: min(10rem, 30vw);
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.7rem;
+  background: #fff;
+  object-fit: contain;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
+}
+
+.live-scoreboard__brand-stack .live-scoreboard__logo {
+  width: min(13rem, 42vw);
+  margin: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .live-feedback *,
   .live-feedback *::before,

@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Howl } from 'howler';
 
 import companyLogo from '../../assets/images/company-logo.png';
+import businessLogo from '../../assets/images/לוגו יואב מעודכן.png';
 import scoreboardSoundUrl from '../../assets/sounds/scoreboard.mp3?url';
 import type { ContestantLiveStats } from '../../store/liveStore';
 import '../../styles/live-results.css';
@@ -159,11 +160,18 @@ export function ScoreboardScreen({
             }}
             className="live-scoreboard__header"
           >
-            <img
-              src={companyLogo}
-              alt="המומחה"
-              className="live-scoreboard__logo"
-            />
+            <div className="live-scoreboard__brand-stack">
+              <img
+                src={businessLogo}
+                alt="החידון והחוויה — בניהולו של יואב שלוסברג"
+                className="live-scoreboard__business-logo"
+              />
+              <img
+                src={companyLogo}
+                alt="המומחה"
+                className="live-scoreboard__logo"
+              />
+            </div>
             <div className="live-scoreboard__title-block">
               <h1 id="scoreboard-title">{quiz?.name ?? 'החידון והחוויה'}</h1>
             </div>

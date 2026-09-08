@@ -29,7 +29,9 @@ import { getGameResultById, saveGameResult } from '../database/dal/results';
 import {
   getImageDataUrl,
   getImageUrl,
+  getMediaUrl,
   saveImage,
+  saveMedia,
 } from '../services/file.service';
 
 function requirePositiveId(id: number): number {
@@ -91,12 +93,40 @@ export function registerIpcHandlers(): void {
     (_event, contestantId: number, orderedIds: number[]) =>
       reorderQuestions(requirePositiveId(contestantId), orderedIds),
   );
-  ipcMain.handle('question:duplicate', (_event, id: number) =>
-    duplicateQuestion(requirePositiveId(id)),
+  ipcMain.handle(
+    'question:duplicate',
+    (_event, id: number, targetContestantId?: number) =>
+      duplicateQuestion(
+        requirePositiveId(id),
+        targetContestantId === undefined
+          ? undefined
+          : requirePositiveId(targetContestantId),
+      ),
   );
 
   ipcMain.handle('result:saveGameResult', (_event, data) =>
     saveGameResult(data),
+  );
+  ipcMain.handle(
+    'file:selectAndSaveMedia',
+    async (_event, category: string) => {
+      const result = await dialog.showOpenDialog({
+        title: 'בחירת מדיה לשאלה',
+        properties: ['openFile'],
+        filters: [
+          {
+            name: 'מדיה נתמכת',
+            extensions: ['png', 'jpg', 'jpeg', 'mp4', 'mp3'],
+          },
+          { name: 'וידאו', extensions: ['mp4'] },
+          { name: 'אודיו', extensions: ['mp3'] },
+          { name: 'תמונות', extensions: ['png', 'jpg', 'jpeg'] },
+        ],
+      });
+
+      if (result.canceled || !result.filePaths[0]) return null;
+      return saveMedia(result.filePaths[0], category);
+    },
   );
   ipcMain.handle('result:getById', (_event, id: number) =>
     getGameResultById(requirePositiveId(id)),
@@ -125,6 +155,9 @@ export function registerIpcHandlers(): void {
   );
   ipcMain.handle('file:getImageUrl', (_event, relativePath: string) =>
     getImageUrl(relativePath),
+  );
+  ipcMain.handle('file:getMediaUrl', (_event, relativePath: string) =>
+    getMediaUrl(relativePath),
   );
   ipcMain.handle('file:getImageDataUrl', (_event, relativePath: string) =>
     getImageDataUrl(relativePath),

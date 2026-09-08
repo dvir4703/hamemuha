@@ -28,7 +28,8 @@ const api: ElectronApi = {
     delete: (id) => ipcRenderer.invoke('question:delete', id),
     reorder: (contestantId, orderedIds) =>
       ipcRenderer.invoke('question:reorder', contestantId, orderedIds),
-    duplicate: (id) => ipcRenderer.invoke('question:duplicate', id),
+    duplicate: (id, targetContestantId) =>
+      ipcRenderer.invoke('question:duplicate', id, targetContestantId),
   },
   result: {
     saveGameResult: (data) => ipcRenderer.invoke('result:saveGameResult', data),
@@ -37,8 +38,12 @@ const api: ElectronApi = {
   file: {
     selectAndSaveImage: (category) =>
       ipcRenderer.invoke('file:selectAndSaveImage', category),
+    selectAndSaveMedia: (category) =>
+      ipcRenderer.invoke('file:selectAndSaveMedia', category),
     getImageUrl: (relativePath) =>
       ipcRenderer.invoke('file:getImageUrl', relativePath),
+    getMediaUrl: (relativePath) =>
+      ipcRenderer.invoke('file:getMediaUrl', relativePath),
     getImageDataUrl: (relativePath) =>
       ipcRenderer.invoke('file:getImageDataUrl', relativePath),
   },

@@ -323,11 +323,8 @@ export function updateQuestion(
       .get(id) as QuestionRow | undefined;
     if (!existing) return false;
 
-    if (existing.question_type !== data.questionType) {
-      throw new Error('לא ניתן לשנות סוג של שאלה קיימת.');
-    }
-
     verifyContestantBelongsToQuiz(database, data.quizId, data.contestantId);
+    const questionTypeChanged = existing.question_type !== data.questionType;
     const displayOrder =
       existing.contestant_id === data.contestantId
         ? existing.display_order
@@ -368,7 +365,7 @@ export function updateQuestion(
     ].includes(data.questionType);
     const usesHints = data.questionType === 'complete_sentence';
     replaceAnswers(database, id, usesAnswers ? data.answers : []);
-    if (data.questionType !== 'association_hints') {
+    if (questionTypeChanged || data.questionType !== 'association_hints') {
       replaceHints(database, id, usesHints ? data.hints : []);
     }
     touchQuiz(database, existing.quiz_id);
@@ -422,7 +419,10 @@ export function reorderQuestions(
   })();
 }
 
-export function duplicateQuestion(id: number): QuestionWithRelations {
+export function duplicateQuestion(
+  id: number,
+  targetContestantId?: number,
+): QuestionWithRelations {
   const database = getDatabase();
   const newId = database.transaction(() => {
     const row = database
@@ -434,9 +434,15 @@ export function duplicateQuestion(id: number): QuestionWithRelations {
       answers: getAnswersByQuestionId(database, id),
       hints: getHintsByQuestionId(database, id),
     };
+    const destinationContestantId = targetContestantId ?? source.contestant_id;
+    verifyContestantBelongsToQuiz(
+      database,
+      source.quiz_id,
+      destinationContestantId,
+    );
     const data: QuestionMutationInput = {
       quizId: source.quiz_id,
-      contestantId: source.contestant_id,
+      contestantId: destinationContestantId,
       questionType: source.question_type,
       questionText: source.question_text,
       imagePath: source.image_path,
@@ -462,7 +468,7 @@ export function duplicateQuestion(id: number): QuestionWithRelations {
     const duplicatedId = insertQuestion(
       database,
       data,
-      nextDisplayOrder(database, source.contestant_id),
+      nextDisplayOrder(database, destinationContestantId),
     );
     if (source.question_type === 'association_hints')
       replaceHints(database, duplicatedId, data.hints);

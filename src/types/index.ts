@@ -189,7 +189,10 @@ export interface ElectronApi {
     ) => Promise<QuestionWithRelations | null>;
     delete: (id: number) => Promise<boolean>;
     reorder: (contestantId: number, orderedIds: number[]) => Promise<boolean>;
-    duplicate: (id: number) => Promise<QuestionWithRelations>;
+    duplicate: (
+      id: number,
+      targetContestantId?: number,
+    ) => Promise<QuestionWithRelations>;
   };
   result: {
     saveGameResult: (
@@ -199,7 +202,9 @@ export interface ElectronApi {
   };
   file: {
     selectAndSaveImage: (category: string) => Promise<string | null>;
+    selectAndSaveMedia: (category: string) => Promise<string | null>;
     getImageUrl: (relativePath: string) => Promise<string>;
+    getMediaUrl: (relativePath: string) => Promise<string>;
     getImageDataUrl: (relativePath: string) => Promise<string>;
   };
   system: {

@@ -16,7 +16,8 @@ function isEditableTarget(target: EventTarget | null): boolean {
     target.isContentEditable ||
     target instanceof HTMLInputElement ||
     target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement
+    target instanceof HTMLSelectElement ||
+    target instanceof HTMLMediaElement
   );
 }
 

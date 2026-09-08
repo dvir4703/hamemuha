@@ -197,7 +197,10 @@ export default function LiveGame() {
   if (gamePhase === 'intro_video') {
     return (
       <>
-        <IntroVideoScreen onComplete={startGame} />
+        <IntroVideoScreen
+          enabled={!exitConfirmationOpen}
+          onComplete={startGame}
+        />
         {exitConfirmationDialog}
       </>
     );
