@@ -216,8 +216,9 @@ export function duplicateQuiz(id: number): Quiz {
           points,
           time_limit,
           display_order,
-          shuffle_answers
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          shuffle_answers,
+          prerevealed_positions
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     );
     const insertAnswer = database.prepare(
@@ -262,6 +263,7 @@ export function duplicateQuiz(id: number): Quiz {
         question.time_limit,
         question.display_order,
         question.shuffle_answers,
+        question.prerevealed_positions,
       );
       const newQuestionId = Number(questionResult.lastInsertRowid);
 

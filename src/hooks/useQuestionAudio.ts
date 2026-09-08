@@ -9,6 +9,7 @@ export function useQuestionAudio(
   questionId: number | null,
   timeLimitSeconds: number | null,
   active: boolean,
+  questionEntrySequence: number,
 ): void {
   useEffect(() => {
     stopQuestionLoopSound();
@@ -18,5 +19,5 @@ export function useQuestionAudio(
       timeLimitSeconds === null ? 'background' : 'countdown',
     );
     return stopQuestionLoopSound;
-  }, [active, questionId, timeLimitSeconds]);
+  }, [active, questionId, questionEntrySequence, timeLimitSeconds]);
 }

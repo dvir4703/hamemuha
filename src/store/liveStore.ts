@@ -9,13 +9,14 @@ import type {
 import {
   calculatePotentialPoints,
   getRevealableHints,
+  isSelectionQuestion,
+  chooseFiftyFiftyHiddenIds,
 } from '../utils/liveQuestion';
 
 export type GamePhase =
   | 'idle'
   | 'opening'
   | 'intro_video'
-  | 'revealing'
   | 'playing'
   | 'showing_answer'
   | 'paused'
@@ -40,7 +41,7 @@ export interface AnsweredQuestionLogEntry {
   pointsAwarded: number;
 }
 
-type ResumableGamePhase = 'revealing' | 'playing' | 'showing_answer';
+type ResumableGamePhase = 'playing' | 'showing_answer';
 
 export interface LiveStoreState {
   quizId: number | null;
@@ -54,9 +55,10 @@ export interface LiveStoreState {
   statsByContestant: Map<number, ContestantLiveStats>;
   answeredQuestionsLog: Map<string, AnsweredQuestionLogEntry>;
   gameStartTime: number | null;
-  questionRevealSequence: number;
+  questionEntrySequence: number;
   revealedHintsForCurrentQuestion: number;
-  revealedOptionsForCurrentQuestion: number;
+  selectedAnswerIds: number[];
+  fiftyFiftyHiddenIdsByQuestion: Map<number, number[]>;
   potentialPointsForCurrentQuestion: number;
   lastAnswerResult: LastAnswerResult | null;
   previousGamePhase: ResumableGamePhase | null;
@@ -67,12 +69,12 @@ export interface LiveStoreState {
   loadQuiz: (quizId: number) => Promise<void>;
   beginIntroVideo: () => void;
   startGame: () => void;
-  completeQuestionReveal: (questionId: number) => void;
   jumpToContestant: (displayOrder: number) => boolean;
   nextQuestion: () => void;
   previousQuestion: () => void;
   revealNextHint: () => number;
-  revealNextOption: () => number;
+  toggleSelectedAnswer: (answerId: number) => void;
+  submitSelectedAnswer: (wasTimeout?: boolean) => void;
   submitAnswer: (
     isCorrect: boolean,
     pointsAwarded: number,
@@ -96,9 +98,10 @@ interface ResettableLiveState {
   statsByContestant: Map<number, ContestantLiveStats>;
   answeredQuestionsLog: Map<string, AnsweredQuestionLogEntry>;
   gameStartTime: number | null;
-  questionRevealSequence: number;
+  questionEntrySequence: number;
   revealedHintsForCurrentQuestion: number;
-  revealedOptionsForCurrentQuestion: number;
+  selectedAnswerIds: number[];
+  fiftyFiftyHiddenIdsByQuestion: Map<number, number[]>;
   potentialPointsForCurrentQuestion: number;
   lastAnswerResult: LastAnswerResult | null;
   previousGamePhase: ResumableGamePhase | null;
@@ -121,9 +124,10 @@ function createIdleState(): ResettableLiveState {
     statsByContestant: new Map(),
     answeredQuestionsLog: new Map(),
     gameStartTime: null,
-    questionRevealSequence: 0,
+    questionEntrySequence: 0,
     revealedHintsForCurrentQuestion: 0,
-    revealedOptionsForCurrentQuestion: 0,
+    selectedAnswerIds: [],
+    fiftyFiftyHiddenIdsByQuestion: new Map(),
     potentialPointsForCurrentQuestion: 0,
     lastAnswerResult: null,
     previousGamePhase: null,
@@ -158,9 +162,13 @@ function basePointsForContestant(
   questionsByContestant: Map<number, QuestionWithRelations[]>,
   indexes: Map<number, number>,
   contestantId: number,
+  fiftyFifty: Map<number, number[]> = new Map(),
 ): number {
   const index = indexes.get(contestantId) ?? 0;
-  return questionsByContestant.get(contestantId)?.[index]?.points ?? 0;
+  const question = questionsByContestant.get(contestantId)?.[index];
+  return question
+    ? calculatePotentialPoints(question, 0, fiftyFifty.has(question.id))
+    : 0;
 }
 
 function haveAllContestantsFinished(
@@ -253,9 +261,10 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
         statsByContestant: stats,
         answeredQuestionsLog: new Map(),
         gameStartTime: null,
-        questionRevealSequence: 0,
+        questionEntrySequence: 0,
         revealedHintsForCurrentQuestion: 0,
-        revealedOptionsForCurrentQuestion: 0,
+        selectedAnswerIds: [],
+        fiftyFiftyHiddenIdsByQuestion: new Map(),
         potentialPointsForCurrentQuestion:
           currentContestantId === null
             ? 0
@@ -299,11 +308,11 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     );
     const hasCurrentQuestion = getCurrentQuestion(state) !== null;
     set({
-      gamePhase: hasCurrentQuestion ? 'revealing' : 'playing',
+      gamePhase: 'playing',
       gameStartTime: state.gameStartTime ?? Date.now(),
-      questionRevealSequence: hasCurrentQuestion
-        ? state.questionRevealSequence + 1
-        : state.questionRevealSequence,
+      questionEntrySequence: hasCurrentQuestion
+        ? state.questionEntrySequence + 1
+        : state.questionEntrySequence,
       lastAnswerResult: null,
       previousGamePhase: null,
     });
@@ -312,13 +321,6 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
         .endGame()
         .catch(() => undefined);
     }
-  },
-
-  completeQuestionReveal: (questionId) => {
-    const state = get();
-    const question = getCurrentQuestion(state);
-    if (state.gamePhase !== 'revealing' || question?.id !== questionId) return;
-    set({ gamePhase: 'playing', previousGamePhase: null });
   },
 
   jumpToContestant: (displayOrder) => {
@@ -351,50 +353,36 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     );
     const shouldResetQuestionState =
       isChangingContestant || isReenteringAnsweredQuestion;
-    const isActiveQuestionPhase =
-      state.gamePhase === 'revealing' ||
-      state.gamePhase === 'playing' ||
-      state.gamePhase === 'showing_answer';
     const nextPhase =
-      shouldRestartQuestion && isActiveQuestionPhase
-        ? 'revealing'
-        : state.gamePhase === 'revealing' && !shouldRestartQuestion
-          ? 'revealing'
-          : state.gamePhase === 'playing' ||
-              state.gamePhase === 'showing_answer'
-            ? 'playing'
-            : state.gamePhase;
+      state.gamePhase === 'playing' || state.gamePhase === 'showing_answer'
+        ? 'playing'
+        : state.gamePhase;
     const nextPreviousPhase =
-      state.gamePhase === 'paused' &&
-      (isChangingQuestion || isReenteringAnsweredQuestion)
-        ? targetQuestion
-          ? 'revealing'
-          : 'playing'
+      state.gamePhase === 'paused' && shouldResetQuestionState
+        ? 'playing'
         : state.previousGamePhase;
     set({
       currentContestantId: contestant.id,
       gamePhase: nextPhase,
-      questionRevealSequence: shouldRestartQuestion
-        ? state.questionRevealSequence + 1
-        : state.questionRevealSequence,
+      questionEntrySequence: shouldRestartQuestion
+        ? state.questionEntrySequence + 1
+        : state.questionEntrySequence,
       lastAnswerResult: null,
       revealedHintsForCurrentQuestion: shouldResetQuestionState
         ? 0
         : state.revealedHintsForCurrentQuestion,
-      revealedOptionsForCurrentQuestion: shouldResetQuestionState
-        ? 0
-        : state.revealedOptionsForCurrentQuestion,
+      selectedAnswerIds: shouldResetQuestionState
+        ? []
+        : state.selectedAnswerIds,
       potentialPointsForCurrentQuestion: shouldResetQuestionState
         ? basePointsForContestant(
             state.questionsByContestant,
             state.currentQuestionIndexByContestant,
             contestant.id,
+            state.fiftyFiftyHiddenIdsByQuestion,
           )
         : state.potentialPointsForCurrentQuestion,
-      previousGamePhase:
-        nextPhase === 'playing' || nextPhase === 'revealing'
-          ? null
-          : nextPreviousPhase,
+      previousGamePhase: nextPhase === 'playing' ? null : nextPreviousPhase,
     });
     return true;
   },
@@ -403,9 +391,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     const state = get();
     if (
       state.currentContestantId === null ||
-      (state.gamePhase !== 'revealing' &&
-        state.gamePhase !== 'playing' &&
-        state.gamePhase !== 'showing_answer')
+      (state.gamePhase !== 'playing' && state.gamePhase !== 'showing_answer')
     ) {
       return;
     }
@@ -424,13 +410,18 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     );
     set({
       currentQuestionIndexByContestant: indexes,
-      questionRevealSequence: questions[nextIndex]
-        ? state.questionRevealSequence + 1
-        : state.questionRevealSequence,
+      questionEntrySequence: questions[nextIndex]
+        ? state.questionEntrySequence + 1
+        : state.questionEntrySequence,
       revealedHintsForCurrentQuestion: 0,
-      revealedOptionsForCurrentQuestion: 0,
-      potentialPointsForCurrentQuestion: questions[nextIndex]?.points ?? 0,
-      gamePhase: questions[nextIndex] ? 'revealing' : 'playing',
+      selectedAnswerIds: [],
+      potentialPointsForCurrentQuestion: basePointsForContestant(
+        state.questionsByContestant,
+        indexes,
+        contestantId,
+        state.fiftyFiftyHiddenIdsByQuestion,
+      ),
+      gamePhase: 'playing',
       lastAnswerResult: null,
       previousGamePhase: null,
     });
@@ -445,9 +436,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     const state = get();
     if (
       state.currentContestantId === null ||
-      (state.gamePhase !== 'revealing' &&
-        state.gamePhase !== 'playing' &&
-        state.gamePhase !== 'showing_answer')
+      (state.gamePhase !== 'playing' && state.gamePhase !== 'showing_answer')
     ) {
       return;
     }
@@ -461,13 +450,18 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     indexes.set(contestantId, previousIndex);
     set({
       currentQuestionIndexByContestant: indexes,
-      questionRevealSequence: questions[previousIndex]
-        ? state.questionRevealSequence + 1
-        : state.questionRevealSequence,
+      questionEntrySequence: questions[previousIndex]
+        ? state.questionEntrySequence + 1
+        : state.questionEntrySequence,
       revealedHintsForCurrentQuestion: 0,
-      revealedOptionsForCurrentQuestion: 0,
-      potentialPointsForCurrentQuestion: questions[previousIndex]?.points ?? 0,
-      gamePhase: questions[previousIndex] ? 'revealing' : 'playing',
+      selectedAnswerIds: [],
+      potentialPointsForCurrentQuestion: basePointsForContestant(
+        state.questionsByContestant,
+        indexes,
+        contestantId,
+        state.fiftyFiftyHiddenIdsByQuestion,
+      ),
+      gamePhase: 'playing',
       lastAnswerResult: null,
       previousGamePhase: null,
     });
@@ -481,20 +475,34 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       state.currentContestantId === null ||
       !question ||
       (question.question_type !== 'complete_sentence' &&
-        question.question_type !== 'association_hints')
+        question.question_type !== 'multiple_choice')
     ) {
       return state.potentialPointsForCurrentQuestion;
     }
-    const revealableHints = getRevealableHints(question);
-    const nextHintCount = Math.min(
-      state.revealedHintsForCurrentQuestion + 1,
-      revealableHints.length,
-    );
+    const isFiftyFifty = question.question_type === 'multiple_choice';
+    if (isFiftyFifty && state.fiftyFiftyHiddenIdsByQuestion.has(question.id)) {
+      return state.potentialPointsForCurrentQuestion;
+    }
+    const hiddenIds = isFiftyFifty ? chooseFiftyFiftyHiddenIds(question) : [];
+    // Do not charge for a hint that cannot hide any incorrect option.
+    if (isFiftyFifty && hiddenIds.length === 0)
+      return state.potentialPointsForCurrentQuestion;
+    const nextHintCount = isFiftyFifty
+      ? 1
+      : Math.min(
+          state.revealedHintsForCurrentQuestion + 1,
+          getRevealableHints(question).length,
+        );
     if (nextHintCount === state.revealedHintsForCurrentQuestion) {
       return state.potentialPointsForCurrentQuestion;
     }
-
-    const potentialPoints = calculatePotentialPoints(question, nextHintCount);
+    const fiftyFifty = new Map(state.fiftyFiftyHiddenIdsByQuestion);
+    if (isFiftyFifty) fiftyFifty.set(question.id, hiddenIds);
+    const potentialPoints = calculatePotentialPoints(
+      question,
+      nextHintCount,
+      isFiftyFifty,
+    );
     const stats = new Map(state.statsByContestant);
     const currentStats = stats.get(state.currentContestantId) ?? {
       correct: 0,
@@ -507,34 +515,64 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
     });
     set({
       revealedHintsForCurrentQuestion: nextHintCount,
+      fiftyFiftyHiddenIdsByQuestion: fiftyFifty,
+      selectedAnswerIds: state.selectedAnswerIds.filter(
+        (id) => !hiddenIds.includes(id),
+      ),
       potentialPointsForCurrentQuestion: potentialPoints,
       statsByContestant: stats,
     });
     return potentialPoints;
   },
 
-  revealNextOption: () => {
+  toggleSelectedAnswer: (answerId) => {
     const state = get();
     const question = getCurrentQuestion(state);
     if (
       state.gamePhase !== 'playing' ||
-      state.currentContestantId === null ||
       !question ||
-      question.question_type !== 'multiple_options'
-    ) {
-      return state.revealedOptionsForCurrentQuestion;
-    }
+      !isSelectionQuestion(question.question_type)
+    )
+      return;
+    if (
+      !question.answers.some((answer) => answer.id === answerId) ||
+      state.fiftyFiftyHiddenIdsByQuestion.get(question.id)?.includes(answerId)
+    )
+      return;
+    const multiple =
+      question.question_type !== 'true_false' &&
+      question.answers.filter((answer) => answer.is_correct).length > 1;
+    set({
+      selectedAnswerIds: multiple
+        ? state.selectedAnswerIds.includes(answerId)
+          ? state.selectedAnswerIds.filter((id) => id !== answerId)
+          : [...state.selectedAnswerIds, answerId]
+        : [answerId],
+    });
+  },
 
-    const nextOptionCount = Math.min(
-      state.revealedOptionsForCurrentQuestion + 1,
-      question.answers.length,
+  submitSelectedAnswer: (wasTimeout = false) => {
+    const state = get();
+    const question = getCurrentQuestion(state);
+    if (
+      state.gamePhase !== 'playing' ||
+      !question ||
+      !isSelectionQuestion(question.question_type)
+    )
+      return;
+    if (!wasTimeout && state.selectedAnswerIds.length === 0) return;
+    const correctIds = question.answers
+      .filter((answer) => answer.is_correct)
+      .map((answer) => answer.id);
+    const isCorrect =
+      correctIds.length > 0 &&
+      state.selectedAnswerIds.length === correctIds.length &&
+      correctIds.every((id) => state.selectedAnswerIds.includes(id));
+    state.submitAnswer(
+      isCorrect,
+      isCorrect ? state.potentialPointsForCurrentQuestion : 0,
+      wasTimeout,
     );
-    if (nextOptionCount === state.revealedOptionsForCurrentQuestion) {
-      return state.revealedOptionsForCurrentQuestion;
-    }
-
-    set({ revealedOptionsForCurrentQuestion: nextOptionCount });
-    return nextOptionCount;
   },
 
   submitAnswer: (isCorrect, pointsAwarded, wasTimeout = false) => {
@@ -615,11 +653,7 @@ export const useLiveStore = create<LiveStoreState>((set, get) => ({
       });
       return;
     }
-    if (
-      state.gamePhase === 'revealing' ||
-      state.gamePhase === 'playing' ||
-      state.gamePhase === 'showing_answer'
-    ) {
+    if (state.gamePhase === 'playing' || state.gamePhase === 'showing_answer') {
       set({
         gamePhase: 'paused',
         previousGamePhase: state.gamePhase,

@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { app } from 'electron';
 
 import initialMigration from './migrations/001_initial.sql?raw';
+import prerevealedMigration from './migrations/002_prerevealed_positions.sql?raw';
 
 type ExistingTable = {
   name: string;
@@ -38,6 +39,15 @@ class DatabaseConnection {
       connection.transaction(() => {
         connection.exec(initialMigration);
       })();
+    }
+
+    const questionColumns = connection.pragma(
+      'table_info(questions)',
+    ) as Array<{ name: string }>;
+    if (
+      !questionColumns.some((column) => column.name === 'prerevealed_positions')
+    ) {
+      connection.transaction(() => connection.exec(prerevealedMigration))();
     }
 
     this.connection = connection;

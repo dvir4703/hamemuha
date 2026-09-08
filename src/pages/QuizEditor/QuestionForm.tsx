@@ -21,7 +21,6 @@ import { OpenAnswerFields } from '../../components/quiz/QuestionTypeFields/OpenA
 import { TrueFalseFields } from '../../components/quiz/QuestionTypeFields/TrueFalseFields';
 import {
   createAnswerDraft,
-  createHintDraft,
   type AnswerDraft,
   type FieldErrors,
   type HintDraft,
@@ -42,7 +41,9 @@ import type {
 } from '../../types';
 import {
   getRevealablePositions,
-  parseRevealPosition,
+  parseRevealPositions,
+  resolveLetterHintPositions,
+  serializeRevealPositions,
 } from '../../utils/letterReveal';
 import { isValidTimeLimit, normalizeTimeLimit } from '../../utils/timeLimit';
 
@@ -81,6 +82,9 @@ export default function QuestionForm() {
   const [timeLimit, setTimeLimit] = useState(30);
   const [explanation, setExplanation] = useState('');
   const [correctAnswerText, setCorrectAnswerText] = useState('');
+  const [prerevealedPositions, setPrerevealedPositions] = useState<number[]>(
+    [],
+  );
   const [answers, setAnswers] = useState<AnswerDraft[]>(defaultAnswers);
   const [hints, setHints] = useState<HintDraft[]>([]);
   const [shuffleAnswers, setShuffleAnswers] = useState(false);
@@ -145,6 +149,9 @@ export default function QuestionForm() {
       setTimeLimit(normalizeTimeLimit(question.time_limit ?? 30));
       setExplanation(question.explanation ?? '');
       setCorrectAnswerText(question.correct_answer_text ?? '');
+      setPrerevealedPositions(
+        parseRevealPositions(question.prerevealed_positions),
+      );
       setShuffleAnswers(question.shuffle_answers);
       setAnswers(
         question.answers.length
@@ -155,13 +162,25 @@ export default function QuestionForm() {
             }))
           : defaultAnswers(),
       );
+      const letterPositions = resolveLetterHintPositions(
+        question.correct_answer_text ?? '',
+        question.hints
+          .filter((hint) => hint.hint_type === 'letter_reveal')
+          .map((hint) => hint.hint_text),
+      );
+      let letterIndex = 0;
       setHints(
-        question.hints.map((hint) => ({
-          key: crypto.randomUUID(),
-          hintType: hint.hint_type,
-          hintText: hint.hint_text ?? '',
-          pointsPenalty: hint.points_penalty,
-        })),
+        question.question_type === 'complete_sentence'
+          ? question.hints.map((hint) => ({
+              key: crypto.randomUUID(),
+              hintType: hint.hint_type,
+              hintText:
+                hint.hint_type === 'letter_reveal'
+                  ? serializeRevealPositions(letterPositions[letterIndex++])
+                  : (hint.hint_text ?? ''),
+              pointsPenalty: hint.points_penalty,
+            }))
+          : [],
       );
       const trueAnswer = question.answers.find(
         (answer) => answer.answer_text === 'נכון',
@@ -181,7 +200,8 @@ export default function QuestionForm() {
     setShuffleAnswers(false);
     setTrueFalseCorrect('true');
     setAnswers(defaultAnswers());
-    setHints(type === 'association_hints' ? [createHintDraft('text')] : []);
+    setHints([]);
+    setPrerevealedPositions([]);
     setErrors({});
   };
 
@@ -231,13 +251,8 @@ export default function QuestionForm() {
       else if (!answers.some((answer) => answer.isCorrect))
         next.answers = 'יש לסמן לפחות תשובה נכונה אחת.';
     }
-    if (
-      questionType === 'complete_sentence' ||
-      questionType === 'association_hints'
-    ) {
-      if (questionType === 'association_hints' && hints.length === 0)
-        next.hints = 'יש להוסיף לפחות רמז אחד.';
-      else if (
+    if (questionType === 'complete_sentence') {
+      if (
         hints.some((hint) => hint.hintType === 'text' && !hint.hintText.trim())
       )
         next.hints = 'יש למלא טקסט בכל הרמזים הטקסטואליים.';
@@ -252,15 +267,16 @@ export default function QuestionForm() {
         const letterHints = hints.filter(
           (hint) => hint.hintType === 'letter_reveal',
         );
-        const selectedPositions = letterHints.map((hint) =>
-          parseRevealPosition(hint.hintText),
+        const hintPositions = letterHints.map((hint) =>
+          parseRevealPositions(hint.hintText),
         );
+        const selectedPositions = hintPositions.flat();
         const validPositions = new Set(
           getRevealablePositions(correctAnswerText),
         );
 
-        if (selectedPositions.some((position) => position === null)) {
-          next.hints = 'יש לבחור מיקום אות בכל רמז מסוג חשיפת אות.';
+        if (hintPositions.some((positions) => positions.length === 0)) {
+          next.hints = 'יש לבחור לפחות מיקום אחד בכל רמז חשיפת אותיות.';
         } else if (
           selectedPositions.some(
             (position) => position === null || !validPositions.has(position),
@@ -306,6 +322,8 @@ export default function QuestionForm() {
         questionType === 'complete_sentence' || questionType === 'open_answer'
           ? correctAnswerText.trim()
           : null,
+      prerevealedPositions:
+        questionType === 'complete_sentence' ? prerevealedPositions : [],
       points,
       timeLimit: isUnlimitedTime ? null : timeLimit,
       shuffleAnswers: questionType === 'multiple_choice' && shuffleAnswers,
@@ -320,11 +338,9 @@ export default function QuestionForm() {
               }))
             : [],
       hints:
-        questionType === 'complete_sentence' ||
-        questionType === 'association_hints'
+        questionType === 'complete_sentence'
           ? hints.map((hint, index) => ({
-              hintType:
-                questionType === 'association_hints' ? 'text' : hint.hintType,
+              hintType: hint.hintType,
               hintText: hint.hintText.trim() || null,
               hintOrder: index + 1,
               pointsPenalty: hint.pointsPenalty,
@@ -383,6 +399,8 @@ export default function QuestionForm() {
         return (
           <CompleteSentenceFields
             correctAnswerText={correctAnswerText}
+            prerevealedPositions={prerevealedPositions}
+            onPrerevealedPositionsChange={setPrerevealedPositions}
             hints={hints}
             errors={errors}
             onCorrectAnswerChange={setCorrectAnswerText}
@@ -414,10 +432,8 @@ export default function QuestionForm() {
       case 'association_hints':
         return (
           <AssociationHintsFields
-            hints={hints}
             answers={answers}
             errors={errors}
-            onHintsChange={setHints}
             onAnswersChange={setAnswers}
           />
         );
@@ -425,6 +441,7 @@ export default function QuestionForm() {
   }, [
     answers,
     correctAnswerText,
+    prerevealedPositions,
     errors,
     hints,
     imageUrl,
@@ -638,7 +655,9 @@ export default function QuestionForm() {
                     : 'מבנה התשובה'}
                 </h2>
                 <p className="mt-1 text-sm text-ink/45">
-                  {typeMeta.description}
+                  {questionType === 'association_hints'
+                    ? 'אלמנט מרכזי ואפשרויות תשובה המוצגות יחד'
+                    : typeMeta.description}
                 </p>
               </div>
               <AnimatePresence mode="wait" initial={false}>

@@ -8,11 +8,9 @@ import { KeyboardCheatSheet } from '../../components/live/KeyboardCheatSheet';
 import { LiveConfirmationDialog } from '../../components/live/LiveConfirmationDialog';
 import { LiveQuestionRenderer } from '../../components/live/LiveQuestionRenderer';
 import { PauseOverlay } from '../../components/live/PauseOverlay';
-import { QuestionRevealScreen } from '../../components/live/QuestionRevealScreen';
 import { QuestionTimer } from '../../components/live/QuestionTimer';
 import { useKeyboard } from '../../hooks/useKeyboard';
 import { useQuestionAudio } from '../../hooks/useQuestionAudio';
-import { useQuestionReveal } from '../../hooks/useQuestionReveal';
 import { useQuestionTimer } from '../../hooks/useQuestionTimer';
 import { selectCurrentQuestion, useLiveStore } from '../../store/liveStore';
 import '../../styles/live-theme.css';
@@ -39,18 +37,12 @@ export default function LiveGame() {
   const scores = useLiveStore((state) => state.scoresByContestant);
   const stats = useLiveStore((state) => state.statsByContestant);
   const gamePhase = useLiveStore((state) => state.gamePhase);
-  const questionRevealSequence = useLiveStore(
-    (state) => state.questionRevealSequence,
+  const questionEntrySequence = useLiveStore(
+    (state) => state.questionEntrySequence,
   );
   const currentQuestion = useLiveStore(selectCurrentQuestion);
   const revealedHints = useLiveStore(
     (state) => state.revealedHintsForCurrentQuestion,
-  );
-  const revealedOptions = useLiveStore(
-    (state) => state.revealedOptionsForCurrentQuestion,
-  );
-  const potentialPoints = useLiveStore(
-    (state) => state.potentialPointsForCurrentQuestion,
   );
   const lastAnswerResult = useLiveStore((state) => state.lastAnswerResult);
   const previousGamePhase = useLiveStore((state) => state.previousGamePhase);
@@ -60,33 +52,14 @@ export default function LiveGame() {
   const loadQuiz = useLiveStore((state) => state.loadQuiz);
   const beginIntroVideo = useLiveStore((state) => state.beginIntroVideo);
   const startGame = useLiveStore((state) => state.startGame);
-  const completeQuestionReveal = useLiveStore(
-    (state) => state.completeQuestionReveal,
-  );
-  const submitAnswer = useLiveStore((state) => state.submitAnswer);
   const resetGame = useLiveStore((state) => state.resetGame);
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
   const [cheatSheetOpen, setCheatSheetOpen] = useState(false);
-  const isHintQuestion =
-    currentQuestion?.question_type === 'complete_sentence' ||
-    currentQuestion?.question_type === 'association_hints';
-  const isProgressiveOptionQuestion =
-    currentQuestion?.question_type === 'multiple_options';
-  const isOpenAnswerQuestion = currentQuestion?.question_type === 'open_answer';
   const isShowingFeedback = Boolean(
     currentQuestion &&
     lastAnswerResult?.questionId === currentQuestion.id &&
     (gamePhase === 'showing_answer' ||
       (gamePhase === 'paused' && previousGamePhase === 'showing_answer')),
-  );
-  const isRevealingQuestion = Boolean(
-    currentQuestion &&
-    (gamePhase === 'revealing' ||
-      (gamePhase === 'paused' && previousGamePhase === 'revealing')),
-  );
-  const questionReveal = useQuestionReveal(
-    questionRevealSequence,
-    gamePhase === 'revealing' && !exitConfirmationOpen && !cheatSheetOpen,
   );
   const questionTimer = useQuestionTimer(
     currentQuestion?.id ?? null,
@@ -95,7 +68,7 @@ export default function LiveGame() {
       !isShowingFeedback &&
       !exitConfirmationOpen &&
       !cheatSheetOpen,
-    questionRevealSequence,
+    questionEntrySequence,
   );
   const questionTimerPaused =
     gamePhase === 'paused' || exitConfirmationOpen || cheatSheetOpen;
@@ -115,23 +88,8 @@ export default function LiveGame() {
       !questionTimer.hasExpired &&
       !exitConfirmationOpen &&
       !cheatSheetOpen,
+    questionEntrySequence,
   );
-
-  useEffect(() => {
-    if (
-      gamePhase !== 'revealing' ||
-      !currentQuestion ||
-      !questionReveal.hasCompleted
-    ) {
-      return;
-    }
-    completeQuestionReveal(currentQuestion.id);
-  }, [
-    completeQuestionReveal,
-    currentQuestion,
-    gamePhase,
-    questionReveal.hasCompleted,
-  ]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -143,14 +101,6 @@ export default function LiveGame() {
     };
   }, [loadQuiz, quizId, resetGame]);
 
-  const handleMarkCorrect = useCallback(() => {
-    if (gamePhase !== 'playing' || !isOpenAnswerQuestion) return;
-    submitAnswer(true, potentialPoints);
-  }, [gamePhase, isOpenAnswerQuestion, potentialPoints, submitAnswer]);
-  const handleMarkWrong = useCallback(() => {
-    if (gamePhase !== 'playing' || !isOpenAnswerQuestion) return;
-    submitAnswer(false, 0);
-  }, [gamePhase, isOpenAnswerQuestion, submitAnswer]);
   const handleExitRequest = useCallback(() => {
     setExitConfirmationOpen(true);
   }, []);
@@ -175,12 +125,7 @@ export default function LiveGame() {
       gamePhase !== 'opening' &&
       gamePhase !== 'finished',
     gameActionsEnabled: gamePhase !== 'intro_video',
-    hintEnabled: gamePhase === 'playing' && isHintQuestion,
-    optionRevealEnabled: gamePhase === 'playing' && isProgressiveOptionQuestion,
-    judgementEnabled: gamePhase === 'playing' && isOpenAnswerQuestion,
     onExitRequest: handleExitRequest,
-    onMarkCorrect: handleMarkCorrect,
-    onMarkWrong: handleMarkWrong,
   });
 
   const currentContestant = contestants.find(
@@ -286,7 +231,7 @@ export default function LiveGame() {
           </div>
         ) : null}
 
-        {currentContestant && !isRevealingQuestion ? (
+        {currentContestant ? (
           <motion.div
             initial={
               shouldReduceMotion ? false : { opacity: 0, y: -20, scale: 0.94 }
@@ -341,73 +286,29 @@ export default function LiveGame() {
                 </motion.div>
               </div>
             ) : currentQuestion ? (
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={
-                    isShowingFeedback
-                      ? `feedback-${lastAnswerResult?.submissionId}`
-                      : isRevealingQuestion
-                        ? `reveal-${questionRevealSequence}`
-                        : `question-${currentContestant.id}-${currentQuestion.id}-${questionRevealSequence}`
-                  }
-                  initial={
-                    shouldReduceMotion
-                      ? { opacity: 0 }
-                      : {
-                          opacity: 0,
-                          x: 72,
-                          scale: 0.965,
-                          filter: 'blur(9px)',
-                        }
-                  }
-                  animate={{
-                    opacity: 1,
-                    x: 0,
-                    scale: 1,
-                    filter: 'blur(0px)',
-                  }}
-                  exit={
-                    shouldReduceMotion
-                      ? { opacity: 0 }
-                      : {
-                          opacity: 0,
-                          x: -54,
-                          scale: 0.98,
-                          filter: 'blur(6px)',
-                        }
-                  }
-                  transition={{
-                    duration: shouldReduceMotion ? 0.12 : 0.46,
-                    ease: [0.22, 0.82, 0.24, 1],
-                  }}
-                  className="live-stage__question-transition"
-                >
-                  {isShowingFeedback && lastAnswerResult ? (
-                    <AnswerFeedbackScreen
-                      question={currentQuestion}
-                      result={lastAnswerResult}
-                      paused={
-                        gamePhase === 'paused' ||
-                        exitConfirmationOpen ||
-                        cheatSheetOpen
-                      }
-                    />
-                  ) : isRevealingQuestion ? (
-                    <QuestionRevealScreen
-                      question={currentQuestion}
-                      progress={questionReveal.progress}
-                    />
-                  ) : (
-                    <LiveQuestionRenderer
-                      key={`${currentContestant.id}-${currentQuestion.id}-${questionRevealSequence}`}
-                      question={currentQuestion}
-                      revealedHints={revealedHints}
-                      revealedOptions={revealedOptions}
-                      timeoutExpired={questionTimer.hasExpired}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
+              <div
+                key={
+                  isShowingFeedback
+                    ? `feedback-${lastAnswerResult?.submissionId}`
+                    : `question-${currentContestant.id}-${currentQuestion.id}-${questionEntrySequence}`
+                }
+                className="live-stage__question-transition"
+              >
+                {isShowingFeedback && lastAnswerResult ? (
+                  <AnswerFeedbackScreen
+                    question={currentQuestion}
+                    result={lastAnswerResult}
+                  />
+                ) : (
+                  <LiveQuestionRenderer
+                    key={`${currentContestant.id}-${currentQuestion.id}-${questionEntrySequence}`}
+                    question={currentQuestion}
+                    revealedHints={revealedHints}
+                    timeoutExpired={questionTimer.hasExpired}
+                    blocked={exitConfirmationOpen || cheatSheetOpen}
+                  />
+                )}
+              </div>
             ) : null
           ) : (
             <div className="live-stage__waiting">
@@ -416,7 +317,7 @@ export default function LiveGame() {
           )}
         </section>
 
-        {currentContestant && !isRevealingQuestion ? (
+        {currentContestant ? (
           <footer className="live-stage__corner-hud">
             <div className="live-stage__contestant-hud">
               <span aria-hidden="true">{currentContestant.display_order}</span>
@@ -434,7 +335,7 @@ export default function LiveGame() {
       <AnimatePresence>
         {showQuestionTimer && questionTimer.remainingSeconds !== null ? (
           <QuestionTimer
-            key={`${currentQuestion?.id}-${questionRevealSequence}`}
+            key={`${currentQuestion?.id}-${questionEntrySequence}`}
             remainingSeconds={questionTimer.remainingSeconds}
             progress={questionTimer.progress}
             paused={questionTimerPaused}

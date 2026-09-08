@@ -223,8 +223,9 @@ export function duplicateContestant(id: number): Contestant {
           points,
           time_limit,
           display_order,
-          shuffle_answers
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          shuffle_answers,
+          prerevealed_positions
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     );
     const insertAnswer = database.prepare(
@@ -263,6 +264,7 @@ export function duplicateContestant(id: number): Contestant {
         question.time_limit,
         question.display_order,
         question.shuffle_answers,
+        question.prerevealed_positions,
       );
       const newQuestionId = Number(questionResult.lastInsertRowid);
       questionIdMap.set(question.id, newQuestionId);

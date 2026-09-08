@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { Award, Sparkles, Star } from 'lucide-react';
 import { animate, motion, useReducedMotion } from 'framer-motion';
 
+import { LetterAnswerBoard } from '../QuestionTypes/LetterAnswerBoard';
+
 import type { QuestionWithRelations } from '../../../types';
 
 interface CorrectAnswerScreenProps {
   question: QuestionWithRelations;
   pointsAwarded: number;
-  autoAdvanceMs: number;
-  paused: boolean;
 }
 
 function AnimatedPoints({ points }: { points: number }) {
@@ -45,8 +45,6 @@ function AnimatedPoints({ points }: { points: number }) {
 export function CorrectAnswerScreen({
   question,
   pointsAwarded,
-  autoAdvanceMs,
-  paused,
 }: CorrectAnswerScreenProps) {
   const shouldReduceMotion = useReducedMotion();
 
@@ -126,6 +124,13 @@ export function CorrectAnswerScreen({
         <span className="live-feedback__points-unit">נקודות</span>
       </motion.div>
 
+      {question.question_type === 'complete_sentence' ? (
+        <LetterAnswerBoard
+          answer={question.correct_answer_text ?? ''}
+          revealAll
+        />
+      ) : null}
+
       {question.explanation ? (
         <motion.article
           initial={
@@ -148,18 +153,6 @@ export function CorrectAnswerScreen({
           </div>
         </motion.article>
       ) : null}
-
-      <div className="live-feedback__advance">
-        {!paused ? (
-          <div className="live-feedback__progress" aria-hidden="true">
-            <motion.div
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: autoAdvanceMs / 1000, ease: 'linear' }}
-            />
-          </div>
-        ) : null}
-      </div>
     </section>
   );
 }

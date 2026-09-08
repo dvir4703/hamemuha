@@ -2,14 +2,18 @@ import { Eye, Lightbulb, Plus, Trash2 } from 'lucide-react';
 
 import {
   getRevealablePositions,
-  parseRevealPosition,
+  parseRevealPositions,
+  serializeRevealPositions,
 } from '../../../utils/letterReveal';
+import { LetterPositionPicker } from './LetterPositionPicker';
 import type { FieldErrors, HintDraft } from './types';
 import { createHintDraft } from './types';
 
 interface CompleteSentenceFieldsProps {
   correctAnswerText: string;
   hints: HintDraft[];
+  prerevealedPositions: number[];
+  onPrerevealedPositionsChange: (positions: number[]) => void;
   errors: FieldErrors;
   onCorrectAnswerChange: (value: string) => void;
   onHintsChange: (hints: HintDraft[]) => void;
@@ -17,12 +21,13 @@ interface CompleteSentenceFieldsProps {
 
 export function CompleteSentenceFields({
   correctAnswerText,
+  prerevealedPositions,
+  onPrerevealedPositionsChange,
   hints,
   errors,
   onCorrectAnswerChange,
   onHintsChange,
 }: CompleteSentenceFieldsProps) {
-  const answerCharacters = Array.from(correctAnswerText.trim());
   const revealPositions = getRevealablePositions(correctAnswerText);
 
   const updateHint = (key: string, changes: Partial<HintDraft>) => {
@@ -33,23 +38,26 @@ export function CompleteSentenceFields({
 
   const handleCorrectAnswerChange = (value: string) => {
     const availablePositions = new Set(getRevealablePositions(value));
-    let clearedInvalidSelection = false;
-    const nextHints = hints.map((hint) => {
-      const selectedPosition = parseRevealPosition(hint.hintText);
-      if (
-        hint.hintType !== 'letter_reveal' ||
-        !hint.hintText ||
-        (selectedPosition !== null && availablePositions.has(selectedPosition))
-      ) {
-        return hint;
-      }
-
-      clearedInvalidSelection = true;
-      return { ...hint, hintText: '' };
-    });
-
     onCorrectAnswerChange(value);
-    if (clearedInvalidSelection) onHintsChange(nextHints);
+    onPrerevealedPositionsChange(
+      prerevealedPositions.filter((position) =>
+        availablePositions.has(position),
+      ),
+    );
+    onHintsChange(
+      hints.map((hint) =>
+        hint.hintType === 'letter_reveal'
+          ? {
+              ...hint,
+              hintText: serializeRevealPositions(
+                parseRevealPositions(hint.hintText).filter((position) =>
+                  availablePositions.has(position),
+                ),
+              ),
+            }
+          : hint,
+      ),
+    );
   };
 
   return (
@@ -74,27 +82,22 @@ export function CompleteSentenceFields({
             {errors.correctAnswerText}
           </p>
         ) : null}
-        {correctAnswerText.trim() ? (
-          <div
-            className="mt-3 flex flex-wrap gap-1.5"
-            dir="rtl"
-            aria-label="תצוגת תיבות האותיות"
-          >
-            {Array.from(correctAnswerText.trim()).map((character, index) =>
-              character === ' ' ? (
-                <span key={`${index}-space`} className="w-3" />
-              ) : (
-                <span
-                  key={`${index}-${character}`}
-                  className="grid h-9 min-w-8 place-items-center rounded-lg border border-violet/20 bg-violet/5 font-display font-bold text-violet"
-                >
-                  {character}
-                </span>
-              ),
-            )}
-          </div>
-        ) : null}
       </div>
+
+      <section className="rounded-[20px] border border-violet/15 bg-violet/[0.035] p-4">
+        <h3 className="font-display text-base font-black">
+          אותיות גלויות מראש
+        </h3>
+        <p className="mb-3 mt-1 text-xs text-ink/45">
+          בחרו אותיות שיופיעו מתחילת השאלה, ללא הפחתת ניקוד ובנפרד מהרמזים.
+        </p>
+        <LetterPositionPicker
+          answer={correctAnswerText}
+          selected={prerevealedPositions}
+          label="בחירת אותיות גלויות מראש"
+          onChange={onPrerevealedPositionsChange}
+        />
+      </section>
 
       <div>
         <div className="mb-3 flex items-center justify-between">
@@ -145,7 +148,7 @@ export function CompleteSentenceFields({
                     }
                     className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2.5 font-semibold outline-none focus:border-violet"
                   >
-                    <option value="letter_reveal">חשיפת אות נוספת</option>
+                    <option value="letter_reveal">חשיפת אותיות</option>
                     <option value="text">רמז טקסטואלי</option>
                   </select>
                 </div>
@@ -184,78 +187,36 @@ export function CompleteSentenceFields({
               ) : (
                 <div className="mt-3">
                   <span className="mb-2 block text-xs font-bold text-ink/50">
-                    איזה מיקום ייחשף?
+                    אילו מיקומים ייחשפו יחד?
                   </span>
                   {revealPositions.length > 0 ? (
-                    <div
-                      className="flex flex-wrap items-end gap-1.5"
-                      dir="rtl"
-                      role="group"
-                      aria-label={`בחירת מיקום אות לרמז ${index + 1}`}
-                    >
-                      {answerCharacters.map((character, position) => {
-                        if (/\s/u.test(character)) {
-                          return (
-                            <span
-                              key={`space-${position}`}
-                              className="w-3"
-                              aria-hidden="true"
-                            />
-                          );
-                        }
-
-                        const selectedPosition = parseRevealPosition(
-                          hint.hintText,
-                        );
-                        const isSelected = selectedPosition === position;
-                        const isSelectedElsewhere = hints.some(
-                          (otherHint) =>
-                            otherHint.key !== hint.key &&
-                            otherHint.hintType === 'letter_reveal' &&
-                            parseRevealPosition(otherHint.hintText) ===
-                              position,
-                        );
-                        const answerPosition =
-                          revealPositions.indexOf(position) + 1;
-
-                        return (
-                          <button
-                            key={`${position}-${character}`}
-                            type="button"
-                            disabled={isSelectedElsewhere && !isSelected}
-                            aria-pressed={isSelected}
-                            aria-label={`בחירת ${character}, אות ${answerPosition} בתשובה`}
-                            onClick={() =>
-                              updateHint(hint.key, {
-                                hintText: String(position),
-                              })
-                            }
-                            className={`grid min-h-12 min-w-11 place-items-center rounded-xl border px-2 py-1 font-display transition ${
-                              isSelected
-                                ? 'border-violet bg-violet text-white shadow-sm'
-                                : isSelectedElsewhere
-                                  ? 'cursor-not-allowed border-ink/10 bg-canvas text-ink/25'
-                                  : 'border-violet/20 bg-white text-violet hover:border-violet/55 hover:bg-violet/5'
-                            }`}
-                          >
-                            <span className="text-lg font-black leading-none">
-                              {character}
-                            </span>
-                            <span className="text-[10px] font-bold leading-none opacity-60">
-                              {answerPosition}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <LetterPositionPicker
+                      answer={correctAnswerText}
+                      selected={parseRevealPositions(hint.hintText)}
+                      unavailable={hints
+                        .filter(
+                          (other) =>
+                            other.key !== hint.key &&
+                            other.hintType === 'letter_reveal',
+                        )
+                        .flatMap((other) =>
+                          parseRevealPositions(other.hintText),
+                        )}
+                      label={`בחירת מיקומי אותיות לרמז ${index + 1}`}
+                      onChange={(positions) =>
+                        updateHint(hint.key, {
+                          hintText: serializeRevealPositions(positions),
+                        })
+                      }
+                    />
                   ) : (
                     <p className="rounded-xl bg-canvas px-3 py-2.5 text-xs font-semibold text-ink/50">
                       הזינו תחילה את התשובה הנכונה כדי לבחור אות.
                     </p>
                   )}
                   <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-violet">
-                    <Eye size={15} /> כל רמז חושף תיבה אחת בלבד. המיקום נשמר גם
-                    כשאות זהה מופיעה יותר מפעם אחת.
+                    <Eye size={15} /> כל רמז חושף את כל התיבות שסומנו יחד. לחיצה
+                    נוספת על אות מבטלת את הסימון.
                   </p>
                 </div>
               )}

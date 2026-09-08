@@ -36,3 +36,6 @@ yarn-error.log*
 
 # Test coverage
 coverage/
+
+# Local UI test artifacts
+test-results/

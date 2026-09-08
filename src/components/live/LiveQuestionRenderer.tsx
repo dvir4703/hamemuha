@@ -2,7 +2,6 @@ import { motion, useReducedMotion } from 'framer-motion';
 
 import { useLiveStore } from '../../store/liveStore';
 import type { QuestionWithRelations } from '../../types';
-import { calculatePotentialPoints } from '../../utils/liveQuestion';
 import { LiveAssociationHints } from './QuestionTypes/LiveAssociationHints';
 import { LiveCompleteSentence } from './QuestionTypes/LiveCompleteSentence';
 import { LiveMultipleChoice } from './QuestionTypes/LiveMultipleChoice';
@@ -14,8 +13,8 @@ import type { LiveQuestionTypeProps } from './QuestionTypes/types';
 interface LiveQuestionRendererProps {
   question: QuestionWithRelations;
   revealedHints: number;
-  revealedOptions: number;
   timeoutExpired: boolean;
+  blocked?: boolean;
 }
 
 const questionComponents = {
@@ -33,15 +32,17 @@ const questionComponents = {
 export function LiveQuestionRenderer({
   question,
   revealedHints,
-  revealedOptions,
   timeoutExpired,
+  blocked = false,
 }: LiveQuestionRendererProps) {
   const shouldReduceMotion = useReducedMotion();
   const gamePhase = useLiveStore((state) => state.gamePhase);
   const submitAnswer = useLiveStore((state) => state.submitAnswer);
   const QuestionComponent = questionComponents[question.question_type];
-  const disabled = gamePhase !== 'playing';
-  const potentialPoints = calculatePotentialPoints(question, revealedHints);
+  const disabled = gamePhase !== 'playing' || blocked;
+  const potentialPoints = useLiveStore(
+    (state) => state.potentialPointsForCurrentQuestion,
+  );
 
   return (
     <motion.div
@@ -65,7 +66,6 @@ export function LiveQuestionRenderer({
           key={question.id}
           question={question}
           revealedHints={revealedHints}
-          revealedOptions={revealedOptions}
           timeoutExpired={timeoutExpired}
           onSubmit={submitAnswer}
           disabled={disabled}

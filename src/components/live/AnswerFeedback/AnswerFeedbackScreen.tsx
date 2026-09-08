@@ -4,13 +4,11 @@ import { Howl } from 'howler';
 
 import correctSoundUrl from '../../../assets/sounds/correct.mp3?url';
 import wrongSoundUrl from '../../../assets/sounds/wrong.mp3?url';
-import { useLiveStore, type LastAnswerResult } from '../../../store/liveStore';
+import { type LastAnswerResult } from '../../../store/liveStore';
 import '../../../styles/live-results.css';
 import type { QuestionWithRelations } from '../../../types';
 import { CorrectAnswerScreen } from './CorrectAnswerScreen';
 import { WrongAnswerScreen } from './WrongAnswerScreen';
-
-export const CORRECT_FEEDBACK_AUTO_ADVANCE_MS = 5600;
 
 const handledSubmissions = new Set<number>();
 const fireConfetti = confetti.create(undefined, {
@@ -22,16 +20,12 @@ const fireConfetti = confetti.create(undefined, {
 interface AnswerFeedbackScreenProps {
   question: QuestionWithRelations;
   result: LastAnswerResult;
-  paused?: boolean;
 }
 
 export function AnswerFeedbackScreen({
   question,
   result,
-  paused = false,
 }: AnswerFeedbackScreenProps) {
-  const nextQuestion = useLiveStore((state) => state.nextQuestion);
-
   useEffect(() => {
     let sound: Howl | null = null;
     const confettiTimers: number[] = [];
@@ -147,21 +141,10 @@ export function AnswerFeedbackScreen({
     };
   }, [result.isCorrect, result.submissionId]);
 
-  useEffect(() => {
-    if (!result.isCorrect || paused) return;
-    const autoAdvanceTimer = window.setTimeout(
-      nextQuestion,
-      CORRECT_FEEDBACK_AUTO_ADVANCE_MS,
-    );
-    return () => window.clearTimeout(autoAdvanceTimer);
-  }, [nextQuestion, paused, result.isCorrect, result.submissionId]);
-
   return result.isCorrect ? (
     <CorrectAnswerScreen
       question={question}
       pointsAwarded={result.pointsAwarded}
-      autoAdvanceMs={CORRECT_FEEDBACK_AUTO_ADVANCE_MS}
-      paused={paused}
     />
   ) : (
     <WrongAnswerScreen question={question} wasTimeout={result.wasTimeout} />

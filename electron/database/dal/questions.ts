@@ -10,7 +10,8 @@ import type {
 } from '../../../src/types';
 import {
   getRevealablePositions,
-  parseRevealPosition,
+  parseRevealPositions,
+  serializeRevealPositions,
 } from '../../../src/utils/letterReveal';
 import { getDatabase } from '../connection';
 import {
@@ -58,14 +59,7 @@ function validateAnswers(answers: AnswerInput[]): void {
   }
 }
 
-function validateHints(
-  hints: HintInput[],
-  requireOne: boolean,
-  correctAnswerText?: string,
-): void {
-  if (requireOne && hints.length === 0) {
-    throw new Error('יש להוסיף לפחות רמז אחד.');
-  }
+function validateHints(hints: HintInput[], correctAnswerText?: string): void {
   const availablePositions =
     correctAnswerText === undefined
       ? null
@@ -77,20 +71,16 @@ function validateHints(
       throw new Error('יש למלא טקסט בכל הרמזים הטקסטואליים.');
     }
     if (hint.hintType === 'letter_reveal' && availablePositions) {
-      const selectedPosition = parseRevealPosition(hint.hintText);
-      if (selectedPosition === null) {
-        throw new Error('יש לבחור מיקום אות בכל רמז מסוג חשיפת אות.');
+      const positions = parseRevealPositions(hint.hintText);
+      if (positions.length === 0)
+        throw new Error('יש לבחור לפחות מיקום אחד בכל רמז חשיפת אותיות.');
+      for (const position of positions) {
+        if (!availablePositions.has(position))
+          throw new Error('אחד ממיקומי האותיות אינו זמין בתשובה הנכונה.');
+        if (selectedPositions.has(position))
+          throw new Error('לא ניתן לבחור את אותו מיקום ביותר מרמז אחד.');
+        selectedPositions.add(position);
       }
-
-      if (!availablePositions.has(selectedPosition)) {
-        throw new Error('אחד ממיקומי האות שנבחרו אינו זמין בתשובה הנכונה.');
-      }
-      if (selectedPositions.has(selectedPosition)) {
-        throw new Error(
-          'לא ניתן לבחור את אותו מיקום ביותר מרמז חשיפת אות אחד.',
-        );
-      }
-      selectedPositions.add(selectedPosition);
     }
     if (!Number.isInteger(hint.pointsPenalty) || hint.pointsPenalty < 0) {
       throw new Error('הפחתת הניקוד ברמז חייבת להיות מספר שלם שאינו שלילי.');
@@ -136,22 +126,30 @@ function validateQuestionInput(data: QuestionMutationInput): void {
         );
       }
       break;
-    case 'complete_sentence':
+    case 'complete_sentence': {
+      const available = new Set(
+        getRevealablePositions(data.correctAnswerText ?? ''),
+      );
+      if (
+        !Array.isArray(data.prerevealedPositions ?? []) ||
+        (data.prerevealedPositions ?? []).some(
+          (position) =>
+            !Number.isSafeInteger(position) || !available.has(position),
+        )
+      ) {
+        throw new Error('אחד ממיקומי האותיות הגלויות מראש אינו תקין.');
+      }
       validateHints(
         data.hints,
-        false,
         requireNonEmpty(data.correctAnswerText ?? '', 'יש להזין תשובה נכונה.'),
       );
       break;
+    }
     case 'open_answer':
       requireNonEmpty(data.correctAnswerText ?? '', 'יש להזין תשובה נכונה.');
       break;
     case 'association_hints':
       validateAnswers(data.answers);
-      validateHints(data.hints, true);
-      if (data.hints.some((hint) => hint.hintType !== 'text')) {
-        throw new Error('בשאלת אסוציאציה ניתן להשתמש ברמז טקסטואלי בלבד.');
-      }
       break;
   }
 }
@@ -199,8 +197,8 @@ function insertQuestion(
         INSERT INTO questions (
           quiz_id, contestant_id, question_type, question_text, image_path,
           explanation, correct_answer_text, points, time_limit, display_order,
-          shuffle_answers
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          shuffle_answers, prerevealed_positions
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     )
     .run(
@@ -215,6 +213,9 @@ function insertQuestion(
       data.timeLimit ?? null,
       displayOrder,
       data.shuffleAnswers ? 1 : 0,
+      data.questionType === 'complete_sentence'
+        ? serializeRevealPositions(data.prerevealedPositions ?? [])
+        : '[]',
     );
   const questionId = Number(result.lastInsertRowid);
   const usesAnswers = [
@@ -223,9 +224,7 @@ function insertQuestion(
     'multiple_options',
     'association_hints',
   ].includes(data.questionType);
-  const usesHints = ['complete_sentence', 'association_hints'].includes(
-    data.questionType,
-  );
+  const usesHints = data.questionType === 'complete_sentence';
   replaceAnswers(database, questionId, usesAnswers ? data.answers : []);
   replaceHints(database, questionId, usesHints ? data.hints : []);
   return questionId;
@@ -340,7 +339,7 @@ export function updateQuestion(
           UPDATE questions SET
             quiz_id = ?, contestant_id = ?, question_type = ?, question_text = ?,
             image_path = ?, explanation = ?, correct_answer_text = ?, points = ?,
-            time_limit = ?, display_order = ?, shuffle_answers = ?
+            time_limit = ?, display_order = ?, shuffle_answers = ?, prerevealed_positions = ?
           WHERE id = ?
         `,
       )
@@ -356,6 +355,9 @@ export function updateQuestion(
         data.timeLimit ?? null,
         displayOrder,
         data.shuffleAnswers ? 1 : 0,
+        data.questionType === 'complete_sentence'
+          ? serializeRevealPositions(data.prerevealedPositions ?? [])
+          : '[]',
         id,
       );
     const usesAnswers = [
@@ -364,11 +366,11 @@ export function updateQuestion(
       'multiple_options',
       'association_hints',
     ].includes(data.questionType);
-    const usesHints = ['complete_sentence', 'association_hints'].includes(
-      data.questionType,
-    );
+    const usesHints = data.questionType === 'complete_sentence';
     replaceAnswers(database, id, usesAnswers ? data.answers : []);
-    replaceHints(database, id, usesHints ? data.hints : []);
+    if (data.questionType !== 'association_hints') {
+      replaceHints(database, id, usesHints ? data.hints : []);
+    }
     touchQuiz(database, existing.quiz_id);
     if (existing.quiz_id !== data.quizId) touchQuiz(database, data.quizId);
     return true;
@@ -440,6 +442,7 @@ export function duplicateQuestion(id: number): QuestionWithRelations {
       imagePath: source.image_path,
       explanation: source.explanation,
       correctAnswerText: source.correct_answer_text,
+      prerevealedPositions: parseRevealPositions(source.prerevealed_positions),
       points: source.points,
       timeLimit: source.time_limit,
       shuffleAnswers: source.shuffle_answers,
@@ -461,6 +464,8 @@ export function duplicateQuestion(id: number): QuestionWithRelations {
       data,
       nextDisplayOrder(database, source.contestant_id),
     );
+    if (source.question_type === 'association_hints')
+      replaceHints(database, duplicatedId, data.hints);
     touchQuiz(database, source.quiz_id);
     return duplicatedId;
   })();

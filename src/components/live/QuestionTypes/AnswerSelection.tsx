@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Check } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 import { useImageUrl } from '../../../hooks/useImageUrl';
 import type { Answer, QuestionWithRelations } from '../../../types';
-import { calculatePotentialPoints } from '../../../utils/liveQuestion';
+import { useLiveStore } from '../../../store/liveStore';
 
 interface AnswerSelectionProps {
   question: QuestionWithRelations;
-  revealedHints: number;
-  revealedOptions: number;
   timeoutExpired: boolean;
   onSubmit: (
     isCorrect: boolean,
@@ -19,7 +17,6 @@ interface AnswerSelectionProps {
   disabled?: boolean;
   forceSingle?: boolean;
   compact?: boolean;
-  progressiveReveal?: boolean;
 }
 
 interface AnswerTileProps {
@@ -30,8 +27,6 @@ interface AnswerTileProps {
   disabled: boolean;
   showLetterBadge: boolean;
   trueFalse: boolean;
-  reduceMotion: boolean;
-  goofyEntrance: boolean;
   onToggle: (answerId: number) => void;
 }
 
@@ -49,47 +44,17 @@ function AnswerTile({
   disabled,
   showLetterBadge,
   trueFalse,
-  reduceMotion,
-  goofyEntrance,
   onToggle,
 }: AnswerTileProps) {
   const imageUrl = useImageUrl(answer.image_path);
 
   return (
     <motion.button
-      layout={goofyEntrance ? 'position' : undefined}
       type="button"
       onClick={() => onToggle(answer.id)}
       disabled={disabled}
       aria-pressed={selected}
-      initial={
-        reduceMotion
-          ? false
-          : goofyEntrance
-            ? {
-                opacity: 0,
-                x: index % 2 === 0 ? 34 : -34,
-                y: -30,
-                scale: 1.26,
-                rotate: index % 2 === 0 ? -15 : 15,
-              }
-            : { opacity: 0, y: 26, scale: 0.955, rotate: 0 }
-      }
-      animate={{ opacity: 1, x: 0, y: 0, scale: 1, rotate: 0 }}
-      transition={
-        goofyEntrance
-          ? {
-              type: 'spring',
-              stiffness: 255,
-              damping: 12,
-              mass: 0.72,
-            }
-          : {
-              delay: reduceMotion ? 0 : 0.18 + index * 0.075,
-              duration: 0.38,
-              ease: [0.22, 0.82, 0.24, 1],
-            }
-      }
+      initial={false}
       whileHover={disabled ? undefined : { y: -4, scale: 1.018 }}
       whileTap={disabled ? undefined : { scale: 0.992 }}
       className="live-answer-tile group"
@@ -124,18 +89,22 @@ function AnswerTile({
 
 export function AnswerSelection({
   question,
-  revealedHints,
-  revealedOptions,
   timeoutExpired,
-  onSubmit,
   disabled = false,
   forceSingle = false,
   compact = false,
-  progressiveReveal = false,
 }: AnswerSelectionProps) {
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const selectedIds = useLiveStore((state) => state.selectedAnswerIds);
+  const hiddenIds = useLiveStore((state) =>
+    state.fiftyFiftyHiddenIdsByQuestion.get(question.id),
+  );
+  const toggleSelectedAnswer = useLiveStore(
+    (state) => state.toggleSelectedAnswer,
+  );
+  const submitSelectedAnswer = useLiveStore(
+    (state) => state.submitSelectedAnswer,
+  );
   const timeoutHandledRef = useRef(false);
-  const reduceMotion = Boolean(useReducedMotion());
   const answers = useMemo(
     () =>
       [...question.answers].sort(
@@ -150,72 +119,39 @@ export function AnswerSelection({
   );
   const multiple = !forceSingle && correctIds.length > 1;
   const trueFalse = question.question_type === 'true_false';
-  const visibleAnswers = progressiveReveal
-    ? answers.slice(0, Math.max(0, revealedOptions))
-    : answers;
-  const allOptionsRevealed =
-    !progressiveReveal || visibleAnswers.length === answers.length;
-
+  const visibleAnswers = answers.filter(
+    (answer) => !hiddenIds?.includes(answer.id),
+  );
   const toggleAnswer = (answerId: number) => {
-    if (disabled) return;
-    setSelectedIds((current) => {
-      if (!multiple) return [answerId];
-      return current.includes(answerId)
-        ? current.filter((id) => id !== answerId)
-        : [...current, answerId];
-    });
+    if (!disabled) toggleSelectedAnswer(answerId);
   };
 
-  const submitSelection = useCallback(
-    (wasTimeout = false) => {
-      if (disabled) return;
-      const selected = new Set(selectedIds);
-      const isCorrect =
-        selected.size === correctIds.length &&
-        correctIds.every((answerId) => selected.has(answerId));
-      onSubmit(
-        isCorrect,
-        isCorrect ? calculatePotentialPoints(question, revealedHints) : 0,
-        wasTimeout,
-      );
-    },
-    [correctIds, disabled, onSubmit, question, revealedHints, selectedIds],
-  );
-
   useEffect(() => {
-    if (!timeoutExpired || timeoutHandledRef.current) return;
+    if (disabled || !timeoutExpired || timeoutHandledRef.current) return;
     timeoutHandledRef.current = true;
-    if (selectedIds.length === 0) {
-      onSubmit(false, 0, true);
-      return;
-    }
-    submitSelection(true);
-  }, [onSubmit, selectedIds.length, submitSelection, timeoutExpired]);
+    submitSelectedAnswer(true);
+  }, [disabled, submitSelectedAnswer, timeoutExpired]);
 
   return (
     <div
       className="live-answer-bank"
       data-compact={compact}
       data-true-false={trueFalse}
-      data-progressive-reveal={progressiveReveal}
-      data-all-options-revealed={allOptionsRevealed}
     >
       <div
         className="live-answer-bank__grid"
         aria-label={multiple ? 'בחירת מספר תשובות' : 'בחירת תשובה אחת'}
       >
-        {visibleAnswers.map((answer, index) => (
+        {visibleAnswers.map((answer) => (
           <AnswerTile
             key={answer.id}
             answer={answer}
-            index={index}
+            index={answers.indexOf(answer)}
             selected={selectedIds.includes(answer.id)}
             multiple={multiple}
             disabled={disabled}
             showLetterBadge={!trueFalse}
             trueFalse={trueFalse}
-            reduceMotion={reduceMotion}
-            goofyEntrance={progressiveReveal}
             onToggle={toggleAnswer}
           />
         ))}
@@ -227,25 +163,6 @@ export function AnswerSelection({
             נבחרו {selectedIds.length} תשובות
           </p>
         ) : null}
-        <AnimatePresence initial={false}>
-          {selectedIds.length > 0 && allOptionsRevealed ? (
-            <motion.button
-              type="button"
-              onClick={() => submitSelection()}
-              disabled={disabled}
-              initial={
-                reduceMotion ? false : { opacity: 0, y: 14, scale: 0.96 }
-              }
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.98 }}
-              whileHover={disabled ? undefined : { y: -2, scale: 1.015 }}
-              whileTap={disabled ? undefined : { scale: 0.985 }}
-              className="live-answer-bank__submit"
-            >
-              הגשת תשובה
-            </motion.button>
-          ) : null}
-        </AnimatePresence>
       </div>
     </div>
   );

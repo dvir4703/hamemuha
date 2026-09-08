@@ -17,5 +17,13 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "node"]
   },
-  "include": ["electron", "src", "vite.config.ts", "tailwind.config.ts"]
+  "include": [
+    "electron",
+    "src",
+    "vite.config.ts",
+    "tailwind.config.ts",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "vitest.config.ts"
+  ]
 }

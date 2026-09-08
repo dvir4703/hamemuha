@@ -32,6 +32,7 @@ export interface Question {
   image_path: string | null;
   explanation: string | null;
   correct_answer_text: string | null;
+  prerevealed_positions: string;
   points: number;
   time_limit: number | null;
   display_order: number;
@@ -149,6 +150,7 @@ export interface QuestionMutationInput {
   imagePath?: string | null;
   explanation?: string | null;
   correctAnswerText?: string | null;
+  prerevealedPositions?: number[];
   points: number;
   timeLimit?: number | null;
   displayOrder?: number;
