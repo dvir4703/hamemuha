@@ -29,9 +29,9 @@ export function QuestionTimer({
       initial={
         shouldReduceMotion
           ? false
-          : { opacity: 0, x: '-50%', y: 24, scale: 0.78, rotate: -7 }
+          : { opacity: 0, y: -14, scale: 0.78, rotate: -7 }
       }
-      animate={{ opacity: 1, x: '-50%', y: 0, scale: 1, rotate: 0 }}
+      animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
       transition={{ type: 'spring', stiffness: 260, damping: 17, mass: 0.7 }}
       className="live-question-timer"
       data-paused={paused}

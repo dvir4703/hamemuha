@@ -259,6 +259,19 @@ export default function LiveGame() {
           </motion.div>
         ) : null}
 
+        {currentContestant ? (
+          <aside
+            className="live-stage__pagination-hud"
+            aria-label={`שאלה ${displayedQuestionNumber} מתוך ${currentQuestions.length}`}
+          >
+            <strong>{displayedQuestionNumber}</strong>
+            <span className="live-stage__pagination-meta" aria-hidden="true">
+              <span>שאלה</span>
+              <small>מתוך {currentQuestions.length}</small>
+            </span>
+          </aside>
+        ) : null}
+
         <section
           className="live-stage__question-frame"
           aria-label={
@@ -327,9 +340,6 @@ export default function LiveGame() {
               <strong id="current-contestant-name">
                 {currentContestant.name}
               </strong>
-            </div>
-            <div className="live-stage__pagination-hud">
-              שאלה {displayedQuestionNumber} מתוך {currentQuestions.length}
             </div>
           </footer>
         ) : null}
