@@ -27,14 +27,11 @@ const questionTypeLabels: Record<QuestionType, string> = {
 };
 
 const shortcuts: ShortcutRow[] = [
-  { keys: ['1-9'], action: 'קפיצה למתמודד', context: 'במהלך המשחק' },
-  { keys: ['→'], action: 'השאלה הבאה', context: 'גם בזמן משוב' },
-  { keys: ['←'], action: 'השאלה הקודמת', context: 'במהלך המשחק' },
-  { keys: ['Space'], action: 'השהיה / המשך', context: 'במהלך המשחק' },
   {
     keys: ['Enter'],
-    action: 'הגשת הבחירה בעכבר',
-    context: 'סוגים 1, 2, 5 ו־6',
+    action: 'הגשת התשובה שנבחרה',
+    context:
+      'שאלות עם אפשרויות: אמריקאית, נכון / לא נכון, אופציות מרובה ואסוציאציה — בוחרים בעכבר ואז Enter',
     types: [
       'multiple_choice',
       'true_false',
@@ -44,35 +41,53 @@ const shortcuts: ShortcutRow[] = [
   },
   {
     keys: ['Enter'],
-    action: 'המשך לשאלה הבאה',
-    context: 'במסך תשובה נכונה או שגויה',
+    action: 'מעבר למסך הבא',
+    context: 'ממסך "תשובה נכונה" או "תשובה שגויה"',
   },
   {
-    keys: ['F4'],
-    action: 'רמז 50/50',
-    context: 'סוג 1',
-    types: ['multiple_choice'],
-  },
-  {
-    keys: ['F4'],
-    action: 'חשיפת הרמז הבא',
-    context: 'סוג 3',
-    types: ['complete_sentence'],
+    keys: ['Enter'],
+    action: 'התחלת המשחק / דילוג על סרטון הפתיחה',
+    context: 'ממסך הפתיחה ובמהלך סרטון הפתיחה',
   },
   {
     keys: ['F1'],
-    action: 'סימון תשובה נכונה',
-    context: 'סוגים 3 ו־4',
+    action: 'סימון תשובה כ"נכונה"',
+    context: 'רק ב"השלם משפט" וב"תשובה פתוחה"',
     types: ['complete_sentence', 'open_answer'],
   },
   {
     keys: ['F2'],
-    action: 'סימון תשובה שגויה',
-    context: 'סוגים 3 ו־4',
+    action: 'סימון תשובה כ"שגויה"',
+    context: 'רק ב"השלם משפט" וב"תשובה פתוחה"',
     types: ['complete_sentence', 'open_answer'],
   },
-  { keys: ['Esc'], action: 'בקשת יציאה / סגירת חלון', context: 'בכל מסך' },
-  { keys: ['Enter'], action: 'התחלת החידון', context: 'מסך הפתיחה' },
+  {
+    keys: ['F4'],
+    action:
+      'חשיפת רמז ("השלם משפט") / רמז 50-50 שמסתיר חצי מהתשובות השגויות (אמריקאית)',
+    context: 'בסוגי השאלות המתאימים',
+    types: ['complete_sentence', 'multiple_choice'],
+  },
+  { keys: ['→'], action: 'מעבר לשאלה הבאה', context: 'במהלך המשחק' },
+  { keys: ['←'], action: 'חזרה לשאלה הקודמת', context: 'במהלך המשחק' },
+  {
+    keys: ['1-9'],
+    action: 'קפיצה ישירה למתמודד לפי מספרו',
+    context: 'במהלך המשחק',
+  },
+  { keys: ['Space'], action: 'השהיית המשחק / המשך', context: 'במהלך המשחק' },
+  { keys: ['Esc'], action: 'יציאה מהמשחק (עם אישור)', context: 'במהלך המשחק' },
+  {
+    keys: ['עכבר'],
+    action: 'בחירת תשובה מהאפשרויות על המסך',
+    context: 'לאחר הבחירה לוחצים Enter להגשה',
+    types: [
+      'multiple_choice',
+      'true_false',
+      'multiple_options',
+      'association_hints',
+    ],
+  },
 ];
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -236,14 +251,15 @@ export function KeyboardCheatSheet({
               </table>
             </div>
 
-            <footer className="keyboard-cheat-sheet-actions mt-6 flex flex-wrap items-center justify-between gap-3">
+            <footer className="mt-6 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold text-white/42">
-                טיפ: הדפיסו את הדף והניחו אותו ליד המקלדת באירוע.
+                ב"השלם משפט" המנחה לא מקליד — הוא שופט בעל־פה באמצעות F1/F2,
+                והמערכת ממלאת את התשובה הנכונה אוטומטית.
               </p>
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="live-keyboard__action inline-flex items-center gap-2 rounded-xl px-5 py-3 font-bold transition hover:bg-[#f4b942]/15 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4b942]/20"
+                className="keyboard-cheat-sheet-actions live-keyboard__action inline-flex items-center gap-2 rounded-xl px-5 py-3 font-bold transition hover:bg-[#f4b942]/15 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#f4b942]/20"
               >
                 <Printer size={19} /> הדפסה / שמירה כ־PDF
               </button>
