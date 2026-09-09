@@ -14,7 +14,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { CreateQuizModal } from '../../components/ui/CreateQuizModal';
 import { Toast } from '../../components/ui/Toast';
 import { useQuizStore } from '../../store/quizStore';
-import type { QuizMutationInput, QuizSummary } from '../../types';
+import type { QuizCreateInput, QuizSummary } from '../../types';
 
 const answerChips = [
   { label: 'א', className: 'bg-teal text-white' },
@@ -78,7 +78,7 @@ export default function Home() {
 
   const closeToast = useCallback(() => setToastMessage(null), []);
 
-  const handleCreate = async (data: QuizMutationInput) => {
+  const handleCreate = async (data: QuizCreateInput) => {
     setSearchTerm('');
     await createQuiz(data);
     setIsCreateOpen(false);

@@ -1916,6 +1916,22 @@
     0 0 30px rgba(244, 185, 66, 0.22);
 }
 
+.live-question-timer[data-scope='contestant'] {
+  top: auto;
+  bottom: clamp(0.55rem, 1.6vh, 1.05rem);
+  left: 50%;
+}
+
+.live-stage[data-timing-mode='per_contestant'] .live-stage__main {
+  padding-bottom: clamp(5.5rem, 10vh, 7rem);
+}
+
+.live-question-timer[data-scope='contestant']
+  .live-question-timer__face
+  strong {
+  font-size: clamp(1.2rem, 2.6vh, 1.8rem);
+}
+
 .live-question-timer__face {
   display: grid;
   width: 100%;

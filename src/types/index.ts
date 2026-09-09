@@ -7,10 +7,12 @@ export type QuestionType =
   | 'association_hints';
 
 export type HintType = 'letter_reveal' | 'text';
+export type TimingMode = 'per_question' | 'per_contestant';
 
 export interface Quiz {
   id: number;
   name: string;
+  timing_mode: TimingMode;
   logo_path: string | null;
   created_at: string;
   updated_at: string;
@@ -21,6 +23,7 @@ export interface Contestant {
   quiz_id: number;
   name: string;
   display_order: number;
+  total_time_limit: number | null;
 }
 
 export interface Question {
@@ -117,15 +120,21 @@ export interface QuizMutationInput {
   name: string;
 }
 
+export interface QuizCreateInput extends QuizMutationInput {
+  timingMode: TimingMode;
+}
+
 export interface ContestantCreateInput {
   quizId: number;
   name: string;
   displayOrder: number;
+  totalTimeLimit?: number | null;
 }
 
 export interface ContestantUpdateInput {
   name: string;
   displayOrder: number;
+  totalTimeLimit?: number | null;
 }
 
 export interface AnswerInput {
@@ -163,7 +172,7 @@ export interface ElectronApi {
   quiz: {
     getAll: () => Promise<QuizSummary[]>;
     getById: (id: number) => Promise<Quiz | null>;
-    create: (data: QuizMutationInput) => Promise<Quiz>;
+    create: (data: QuizCreateInput) => Promise<Quiz>;
     update: (id: number, data: QuizMutationInput) => Promise<Quiz | null>;
     delete: (id: number) => Promise<boolean>;
     duplicate: (id: number) => Promise<Quiz>;

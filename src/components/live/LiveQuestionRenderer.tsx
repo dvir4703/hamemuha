@@ -15,6 +15,7 @@ interface LiveQuestionRendererProps {
   revealedHints: number;
   timeoutExpired: boolean;
   blocked?: boolean;
+  contestantTimeExpired?: boolean;
 }
 
 const questionComponents = {
@@ -34,6 +35,7 @@ export function LiveQuestionRenderer({
   revealedHints,
   timeoutExpired,
   blocked = false,
+  contestantTimeExpired = false,
 }: LiveQuestionRendererProps) {
   const shouldReduceMotion = useReducedMotion();
   const gamePhase = useLiveStore((state) => state.gamePhase);
@@ -60,6 +62,11 @@ export function LiveQuestionRenderer({
         <span className="live-question-shell__points">
           {potentialPoints} נקודות
         </span>
+        {contestantTimeExpired ? (
+          <span className="text-sm font-bold text-[#ffe08a]/80" role="status">
+            הזמן הסתיים — אפשר לענות על השאלה הנוכחית ללא ניקוד
+          </span>
+        ) : null}
       </motion.div>
       <motion.div layout="position" className="live-question-shell__content">
         <QuestionComponent

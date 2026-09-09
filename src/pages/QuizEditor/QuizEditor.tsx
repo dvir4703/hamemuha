@@ -41,6 +41,11 @@ import { SortableQuestionItem } from '../../components/quiz/SortableQuestionItem
 import { QuestionDuplicateDialog } from '../../components/quiz/QuestionDuplicateDialog';
 import { ActionConfirmDialog } from '../../components/ui/ActionConfirmDialog';
 import { Toast } from '../../components/ui/Toast';
+import { TimeLimitStepper } from '../../components/quiz/TimeLimitStepper';
+import {
+  CONTESTANT_TIME_DEFAULT,
+  formatContestantTime,
+} from '../../utils/timeLimit';
 import type {
   Contestant,
   QuestionSummary,
@@ -61,6 +66,7 @@ export default function QuizEditor() {
   const { quizId: quizIdParam } = useParams();
   const quizId = Number(quizIdParam);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const isContestantTiming = quiz?.timing_mode === 'per_contestant';
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [questions, setQuestions] = useState<QuestionSummary[]>([]);
   const [selectedContestantId, setSelectedContestantId] = useState<
@@ -75,10 +81,16 @@ export default function QuizEditor() {
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const [isAddingContestant, setIsAddingContestant] = useState(false);
   const [newContestantName, setNewContestantName] = useState('');
+  const [newContestantTime, setNewContestantTime] = useState(
+    CONTESTANT_TIME_DEFAULT,
+  );
   const [editingContestantId, setEditingContestantId] = useState<number | null>(
     null,
   );
   const [contestantNameDraft, setContestantNameDraft] = useState('');
+  const [contestantTimeDraft, setContestantTimeDraft] = useState(
+    CONTESTANT_TIME_DEFAULT,
+  );
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
@@ -201,6 +213,7 @@ export default function QuizEditor() {
       const created = await window.api.contestant.create({
         quizId,
         name,
+        totalTimeLimit: isContestantTiming ? newContestantTime : null,
         displayOrder:
           Math.max(
             0,
@@ -210,6 +223,7 @@ export default function QuizEditor() {
       setContestants((current) => [...current, created]);
       setSelectedContestantId(created.id);
       setNewContestantName('');
+      setNewContestantTime(CONTESTANT_TIME_DEFAULT);
       setIsAddingContestant(false);
       setToast('המתמודד נוסף');
     } catch (createError) {
@@ -224,13 +238,14 @@ export default function QuizEditor() {
       const updated = await window.api.contestant.update(contestant.id, {
         name,
         displayOrder: contestant.display_order,
+        totalTimeLimit: isContestantTiming ? contestantTimeDraft : null,
       });
       if (updated) {
         setContestants((current) =>
           current.map((item) => (item.id === updated.id ? updated : item)),
         );
         setEditingContestantId(null);
-        setToast('שם המתמודד עודכן');
+        setToast('פרטי המתמודד עודכנו');
       }
     } catch (updateError) {
       setError(getErrorMessage(updateError));
@@ -463,7 +478,10 @@ export default function QuizEditor() {
               </button>
             )}
             <p className="mt-0.5 text-xs font-bold text-ink/40">
-              ניהול שאלות ומתמודדים
+              ניהול שאלות ומתמודדים ·{' '}
+              {isContestantTiming
+                ? 'זמן כולל לכל מתמודד'
+                : 'זמן לכל שאלה בנפרד'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -546,36 +564,48 @@ export default function QuizEditor() {
               return editingContestantId === contestant.id ? (
                 <div
                   key={contestant.id}
-                  className="flex shrink-0 items-center gap-1 rounded-2xl border border-teal bg-white p-1 ring-4 ring-teal/10"
+                  className="shrink-0 rounded-2xl border border-teal bg-white p-2 ring-4 ring-teal/10"
                 >
-                  <input
-                    autoFocus
-                    value={contestantNameDraft}
-                    onChange={(event) =>
-                      setContestantNameDraft(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter')
-                        void saveContestant(contestant);
-                      if (event.key === 'Escape') setEditingContestantId(null);
-                    }}
-                    className="w-36 bg-transparent px-2 py-1.5 font-bold outline-none"
-                    aria-label="שם המתמודד"
-                  />
-                  <button
-                    onClick={() => void saveContestant(contestant)}
-                    className="rounded-lg bg-teal p-1.5 text-white"
-                    aria-label="שמירה"
-                  >
-                    <Check size={16} />
-                  </button>
-                  <button
-                    onClick={() => setEditingContestantId(null)}
-                    className="rounded-lg p-1.5 text-ink/40 hover:bg-canvas"
-                    aria-label="ביטול"
-                  >
-                    <X size={16} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <input
+                      autoFocus
+                      value={contestantNameDraft}
+                      onChange={(event) =>
+                        setContestantNameDraft(event.target.value)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter')
+                          void saveContestant(contestant);
+                        if (event.key === 'Escape')
+                          setEditingContestantId(null);
+                      }}
+                      className="w-36 bg-transparent px-2 py-1.5 font-bold outline-none"
+                      aria-label="שם המתמודד"
+                    />
+                    <button
+                      onClick={() => void saveContestant(contestant)}
+                      className="rounded-lg bg-teal p-1.5 text-white"
+                      aria-label="שמירה"
+                    >
+                      <Check size={16} />
+                    </button>
+                    <button
+                      onClick={() => setEditingContestantId(null)}
+                      className="rounded-lg p-1.5 text-ink/40 hover:bg-canvas"
+                      aria-label="ביטול"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                  {isContestantTiming ? (
+                    <div className="mt-3 w-72">
+                      <TimeLimitStepper
+                        scope="contestant"
+                        value={contestantTimeDraft}
+                        onChange={setContestantTimeDraft}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <button
@@ -595,41 +625,67 @@ export default function QuizEditor() {
                   >
                     {count} שאלות
                   </span>
+                  {isContestantTiming ? (
+                    <span
+                      className={`mt-1 block text-xs font-bold ${isSelected ? 'text-amber' : 'text-violet'}`}
+                    >
+                      זמן כולל:{' '}
+                      <bdi>
+                        {formatContestantTime(
+                          contestant.total_time_limit ??
+                            CONTESTANT_TIME_DEFAULT,
+                        )}
+                      </bdi>
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
 
             {isAddingContestant ? (
-              <div className="flex shrink-0 items-center gap-1 rounded-2xl border border-teal bg-white p-1 ring-4 ring-teal/10">
-                <input
-                  autoFocus
-                  value={newContestantName}
-                  onChange={(event) => setNewContestantName(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') void addContestant();
-                    if (event.key === 'Escape') setIsAddingContestant(false);
-                  }}
-                  placeholder="שם המתמודד"
-                  className="w-40 bg-transparent px-2 py-1.5 font-bold outline-none placeholder:text-ink/30"
-                />
-                <button
-                  onClick={() => void addContestant()}
-                  disabled={!newContestantName.trim()}
-                  className="rounded-lg bg-teal p-1.5 text-white disabled:opacity-35"
-                  aria-label="הוספה"
-                >
-                  <Check size={16} />
-                </button>
-                <button
-                  onClick={() => {
-                    setIsAddingContestant(false);
-                    setNewContestantName('');
-                  }}
-                  className="rounded-lg p-1.5 text-ink/40 hover:bg-canvas"
-                  aria-label="ביטול"
-                >
-                  <X size={16} />
-                </button>
+              <div className="shrink-0 rounded-2xl border border-teal bg-white p-2 ring-4 ring-teal/10">
+                <div className="flex items-center gap-1">
+                  <input
+                    autoFocus
+                    value={newContestantName}
+                    onChange={(event) =>
+                      setNewContestantName(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void addContestant();
+                      if (event.key === 'Escape') setIsAddingContestant(false);
+                    }}
+                    placeholder="שם המתמודד"
+                    className="w-40 bg-transparent px-2 py-1.5 font-bold outline-none placeholder:text-ink/30"
+                  />
+                  <button
+                    onClick={() => void addContestant()}
+                    disabled={!newContestantName.trim()}
+                    className="rounded-lg bg-teal p-1.5 text-white disabled:opacity-35"
+                    aria-label="הוספה"
+                  >
+                    <Check size={16} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAddingContestant(false);
+                      setNewContestantName('');
+                    }}
+                    className="rounded-lg p-1.5 text-ink/40 hover:bg-canvas"
+                    aria-label="ביטול"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                {isContestantTiming ? (
+                  <div className="mt-3 w-72">
+                    <TimeLimitStepper
+                      scope="contestant"
+                      value={newContestantTime}
+                      onChange={setNewContestantTime}
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -683,11 +739,16 @@ export default function QuizEditor() {
                   type="button"
                   onClick={() => {
                     setContestantNameDraft(selectedContestant.name);
+                    setContestantTimeDraft(
+                      selectedContestant.total_time_limit ??
+                        CONTESTANT_TIME_DEFAULT,
+                    );
                     setEditingContestantId(selectedContestant.id);
                   }}
                   className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-bold hover:bg-white/15"
                 >
-                  <Pencil size={16} /> שינוי שם
+                  <Pencil size={16} />{' '}
+                  {isContestantTiming ? 'שם וזמן כולל' : 'שינוי שם'}
                 </button>
                 <button
                   type="button"
@@ -783,6 +844,7 @@ export default function QuizEditor() {
                       <SortableQuestionItem
                         key={question.id}
                         question={question}
+                        showQuestionTime={!isContestantTiming}
                         questionNumber={
                           questionNumberById.get(question.id) ?? 0
                         }

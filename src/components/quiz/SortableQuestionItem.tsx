@@ -15,6 +15,7 @@ import { QUESTION_TYPE_META } from './questionTypes';
 interface SortableQuestionItemProps {
   question: QuestionSummary;
   questionNumber: number;
+  showQuestionTime?: boolean;
   dragDisabled: boolean;
   isDuplicating: boolean;
   onEdit: () => void;
@@ -25,6 +26,7 @@ interface SortableQuestionItemProps {
 export function SortableQuestionItem({
   question,
   questionNumber,
+  showQuestionTime = true,
   dragDisabled,
   isDuplicating,
   onEdit,
@@ -95,14 +97,18 @@ export function SortableQuestionItem({
             <Sparkles size={13} aria-hidden="true" />
             {question.points} נק׳
           </span>
-          {question.time_limit ? (
-            <span className="inline-flex items-center gap-1 text-xs font-bold text-ink/45">
-              <Clock3 size={13} aria-hidden="true" />
-              {question.time_limit} שנ׳
-            </span>
-          ) : (
-            <span className="text-xs font-bold text-ink/35">ללא הגבלת זמן</span>
-          )}
+          {showQuestionTime ? (
+            question.time_limit ? (
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-ink/45">
+                <Clock3 size={13} aria-hidden="true" />
+                {question.time_limit} שנ׳
+              </span>
+            ) : (
+              <span className="text-xs font-bold text-ink/35">
+                ללא הגבלת זמן
+              </span>
+            )
+          ) : null}
         </div>
         <h3 className="mt-1 truncate font-display text-base font-bold text-ink">
           {question.question_text}

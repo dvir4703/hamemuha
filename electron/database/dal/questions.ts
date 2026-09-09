@@ -7,6 +7,7 @@ import type {
   QuestionMutationInput,
   QuestionSummaryWithRelations,
   QuestionWithRelations,
+  TimingMode,
 } from '../../../src/types';
 import {
   getRevealablePositions,
@@ -154,6 +155,16 @@ function validateQuestionInput(data: QuestionMutationInput): void {
   }
 }
 
+function applyQuizTiming(data: QuestionMutationInput): QuestionMutationInput {
+  const quiz = getDatabase()
+    .prepare('SELECT timing_mode FROM quizzes WHERE id = ?')
+    .get(data.quizId) as { timing_mode: TimingMode } | undefined;
+  if (!quiz) throw new Error('החידון לא נמצא.');
+  return quiz.timing_mode === 'per_contestant'
+    ? { ...data, timeLimit: null }
+    : data;
+}
+
 function verifyContestantBelongsToQuiz(
   database: Database.Database,
   quizId: number,
@@ -296,6 +307,7 @@ export function getQuestionById(id: number): QuestionWithRelations | null {
 export function createQuestion(
   data: QuestionMutationInput,
 ): QuestionWithRelations {
+  data = applyQuizTiming(data);
   validateQuestionInput(data);
   const database = getDatabase();
   const questionId = database.transaction(() => {
@@ -315,6 +327,7 @@ export function updateQuestion(
   id: number,
   data: QuestionMutationInput,
 ): QuestionWithRelations | null {
+  data = applyQuizTiming(data);
   validateQuestionInput(data);
   const database = getDatabase();
   const updated = database.transaction(() => {

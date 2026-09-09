@@ -70,6 +70,7 @@ export default function QuestionForm() {
   const isEditing = questionId !== null;
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const isContestantTiming = quiz?.timing_mode === 'per_contestant';
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [questionType, setQuestionType] =
     useState<QuestionType>('multiple_choice');
@@ -230,7 +231,7 @@ export default function QuestionForm() {
           : 'יש להזין טקסט לשאלה.';
     if (!Number.isInteger(points) || points < 0)
       next.points = 'הניקוד חייב להיות מספר שלם שאינו שלילי.';
-    if (!isUnlimitedTime && !isValidTimeLimit(timeLimit))
+    if (!isContestantTiming && !isUnlimitedTime && !isValidTimeLimit(timeLimit))
       next.timeLimit = 'זמן המענה חייב להיות כפולה של 10, בין 10 ל־300 שניות.';
 
     if (
@@ -325,7 +326,7 @@ export default function QuestionForm() {
       prerevealedPositions:
         questionType === 'complete_sentence' ? prerevealedPositions : [],
       points,
-      timeLimit: isUnlimitedTime ? null : timeLimit,
+      timeLimit: isContestantTiming || isUnlimitedTime ? null : timeLimit,
       shuffleAnswers: questionType === 'multiple_choice' && shuffleAnswers,
       answers:
         questionType === 'true_false'
@@ -749,31 +750,35 @@ export default function QuestionForm() {
               </div>
             </section>
 
-            <section className="rounded-[24px] border border-ink/[0.06] bg-white p-5 shadow-card">
-              <label className="flex cursor-pointer items-center justify-between gap-3">
-                <span className="flex items-center gap-2 font-display font-black">
-                  <Clock3 className="text-violet" size={19} /> זמן מענה
-                </span>
-                <input
-                  type="checkbox"
-                  checked={isUnlimitedTime}
-                  onChange={(event) => setIsUnlimitedTime(event.target.checked)}
-                  className="h-5 w-5 accent-teal"
-                />
-              </label>
-              <p className="mt-1 text-xs text-ink/45">
-                הסימון מגדיר ללא הגבלת זמן
-              </p>
-              {!isUnlimitedTime ? (
-                <div className="mt-4">
-                  <TimeLimitStepper
-                    value={timeLimit}
-                    error={errors.timeLimit}
-                    onChange={setTimeLimit}
+            {!isContestantTiming ? (
+              <section className="rounded-[24px] border border-ink/[0.06] bg-white p-5 shadow-card">
+                <label className="flex cursor-pointer items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 font-display font-black">
+                    <Clock3 className="text-violet" size={19} /> זמן מענה
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={isUnlimitedTime}
+                    onChange={(event) =>
+                      setIsUnlimitedTime(event.target.checked)
+                    }
+                    className="h-5 w-5 accent-teal"
                   />
-                </div>
-              ) : null}
-            </section>
+                </label>
+                <p className="mt-1 text-xs text-ink/45">
+                  הסימון מגדיר ללא הגבלת זמן
+                </p>
+                {!isUnlimitedTime ? (
+                  <div className="mt-4">
+                    <TimeLimitStepper
+                      value={timeLimit}
+                      error={errors.timeLimit}
+                      onChange={setTimeLimit}
+                    />
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
 
             <div className="rounded-[22px] bg-teal/10 p-4 text-sm leading-6 text-teal-dark">
               <strong className="block">הכול נשמר מקומית</strong>

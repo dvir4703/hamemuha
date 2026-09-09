@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { LoaderCircle, Plus, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-import type { QuizMutationInput } from '../../types';
+import type { QuizCreateInput, TimingMode } from '../../types';
 
 interface CreateQuizModalProps {
   onClose: () => void;
-  onCreate: (data: QuizMutationInput) => Promise<void>;
+  onCreate: (data: QuizCreateInput) => Promise<void>;
 }
 
 export function CreateQuizModal({ onClose, onCreate }: CreateQuizModalProps) {
   const [name, setName] = useState('');
+  const [timingMode, setTimingMode] = useState<TimingMode>('per_question');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -42,7 +43,7 @@ export function CreateQuizModal({ onClose, onCreate }: CreateQuizModalProps) {
     setError(null);
 
     try {
-      await onCreate({ name: trimmedName });
+      await onCreate({ name: trimmedName, timingMode });
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
@@ -113,6 +114,50 @@ export function CreateQuizModal({ onClose, onCreate }: CreateQuizModalProps) {
               required
             />
           </div>
+
+          <fieldset disabled={isSaving} className="space-y-3">
+            <legend className="mb-2 text-sm font-bold text-ink">
+              מנגנון תזמון
+            </legend>
+            {(
+              [
+                [
+                  'per_question',
+                  'זמן לכל שאלה בנפרד',
+                  'מגדירים זמן מענה או ללא הגבלה בכל שאלה.',
+                ],
+                [
+                  'per_contestant',
+                  'זמן כולל לכל מתמודד',
+                  'מגדירים לכל מתמודד תקציב זמן משותף לכל שאלותיו.',
+                ],
+              ] as const
+            ).map(([value, label, description]) => (
+              <label
+                key={value}
+                className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition ${timingMode === value ? 'border-teal bg-teal/5' : 'border-ink/10 hover:bg-canvas'}`}
+              >
+                <input
+                  type="radio"
+                  name="timing-mode"
+                  value={value}
+                  checked={timingMode === value}
+                  onChange={() => setTimingMode(value)}
+                  required
+                  className="mt-1 h-4 w-4 shrink-0 accent-teal"
+                />
+                <span>
+                  <strong className="block text-sm text-ink">{label}</strong>
+                  <span className="mt-1 block text-xs leading-5 text-ink/55">
+                    {description}
+                  </span>
+                </span>
+              </label>
+            ))}
+            <p className="text-xs text-ink/50">
+              מנגנון התזמון נבחר פעם אחת ואינו ניתן לשינוי לאחר היצירה.
+            </p>
+          </fieldset>
 
           {error ? (
             <p

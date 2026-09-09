@@ -5,6 +5,7 @@ import { app } from 'electron';
 
 import initialMigration from './migrations/001_initial.sql?raw';
 import prerevealedMigration from './migrations/002_prerevealed_positions.sql?raw';
+import timingMigration from './migrations/003_timing_modes.sql?raw';
 
 type ExistingTable = {
   name: string;
@@ -48,6 +49,13 @@ class DatabaseConnection {
       !questionColumns.some((column) => column.name === 'prerevealed_positions')
     ) {
       connection.transaction(() => connection.exec(prerevealedMigration))();
+    }
+
+    const quizColumns = connection.pragma('table_info(quizzes)') as Array<{
+      name: string;
+    }>;
+    if (!quizColumns.some((column) => column.name === 'timing_mode')) {
+      connection.transaction(() => connection.exec(timingMigration))();
     }
 
     this.connection = connection;

@@ -12,6 +12,7 @@ import { QuestionTimer } from '../../components/live/QuestionTimer';
 import { useKeyboard } from '../../hooks/useKeyboard';
 import { useQuestionAudio } from '../../hooks/useQuestionAudio';
 import { useQuestionTimer } from '../../hooks/useQuestionTimer';
+import { useContestantTimer } from '../../hooks/useContestantTimer';
 import { selectCurrentQuestion, useLiveStore } from '../../store/liveStore';
 import '../../styles/live-theme.css';
 import { IntroVideoScreen } from './IntroVideoScreen';
@@ -55,6 +56,10 @@ export default function LiveGame() {
   const resetGame = useLiveStore((state) => state.resetGame);
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
   const [cheatSheetOpen, setCheatSheetOpen] = useState(false);
+  const isContestantTiming = quiz?.timing_mode === 'per_contestant';
+  const contestantTimer = useContestantTimer(
+    exitConfirmationOpen || cheatSheetOpen,
+  );
   const isShowingFeedback = Boolean(
     currentQuestion &&
     lastAnswerResult?.questionId === currentQuestion.id &&
@@ -63,8 +68,9 @@ export default function LiveGame() {
   );
   const questionTimer = useQuestionTimer(
     currentQuestion?.id ?? null,
-    currentQuestion?.time_limit ?? null,
-    gamePhase === 'playing' &&
+    isContestantTiming ? null : (currentQuestion?.time_limit ?? null),
+    !isContestantTiming &&
+      gamePhase === 'playing' &&
       !isShowingFeedback &&
       !exitConfirmationOpen &&
       !cheatSheetOpen,
@@ -72,9 +78,10 @@ export default function LiveGame() {
   );
   const questionTimerPaused =
     gamePhase === 'paused' || exitConfirmationOpen || cheatSheetOpen;
+  const activeTimer = isContestantTiming ? contestantTimer : questionTimer;
   const showQuestionTimer = Boolean(
     currentQuestion &&
-    questionTimer.remainingSeconds !== null &&
+    activeTimer.remainingSeconds !== null &&
     !isShowingFeedback &&
     (gamePhase === 'playing' ||
       (gamePhase === 'paused' && previousGamePhase === 'playing')),
@@ -82,10 +89,10 @@ export default function LiveGame() {
 
   useQuestionAudio(
     currentQuestion?.id ?? null,
-    currentQuestion?.time_limit ?? null,
+    isContestantTiming ? 10 : (currentQuestion?.time_limit ?? null),
     gamePhase === 'playing' &&
       !isShowingFeedback &&
-      !questionTimer.hasExpired &&
+      !activeTimer.hasExpired &&
       !exitConfirmationOpen &&
       !cheatSheetOpen,
     questionEntrySequence,
@@ -220,7 +227,10 @@ export default function LiveGame() {
   }
 
   return (
-    <div className="live-stage relative min-h-screen overflow-hidden">
+    <div
+      className="live-stage relative min-h-screen overflow-hidden"
+      data-timing-mode={quiz?.timing_mode}
+    >
       <div className="live-stage__atmosphere" aria-hidden="true" />
       <div className="live-stage__beam" aria-hidden="true" />
 
@@ -298,7 +308,11 @@ export default function LiveGame() {
                   <h2 className="live-stage__completion-title">
                     יישר כוח, {currentContestant.name}!
                   </h2>
-                  <p className="live-stage__completion-copy">עבודה נהדרת!</p>
+                  <p className="live-stage__completion-copy">
+                    {isContestantTiming && contestantTimer.hasExpired
+                      ? 'הזמן הכולל הסתיים — כל הכבוד על ההשתתפות!'
+                      : 'עבודה נהדרת!'}
+                  </p>
                 </motion.div>
               </div>
             ) : currentQuestion ? (
@@ -320,7 +334,12 @@ export default function LiveGame() {
                     key={`${currentContestant.id}-${currentQuestion.id}-${questionEntrySequence}`}
                     question={currentQuestion}
                     revealedHints={revealedHints}
-                    timeoutExpired={questionTimer.hasExpired}
+                    timeoutExpired={
+                      !isContestantTiming && questionTimer.hasExpired
+                    }
+                    contestantTimeExpired={
+                      isContestantTiming && contestantTimer.hasExpired
+                    }
                     blocked={exitConfirmationOpen || cheatSheetOpen}
                   />
                 )}
@@ -346,13 +365,18 @@ export default function LiveGame() {
       </main>
 
       <AnimatePresence>
-        {showQuestionTimer && questionTimer.remainingSeconds !== null ? (
+        {showQuestionTimer && activeTimer.remainingSeconds !== null ? (
           <QuestionTimer
-            key={`${currentQuestion?.id}-${questionEntrySequence}`}
-            remainingSeconds={questionTimer.remainingSeconds}
-            progress={questionTimer.progress}
+            key={
+              isContestantTiming
+                ? `contestant-${currentContestantId}`
+                : `${currentQuestion?.id}-${questionEntrySequence}`
+            }
+            scope={isContestantTiming ? 'contestant' : 'question'}
+            remainingSeconds={activeTimer.remainingSeconds}
+            progress={activeTimer.progress}
             paused={questionTimerPaused}
-            expired={questionTimer.hasExpired}
+            expired={activeTimer.hasExpired}
           />
         ) : null}
       </AnimatePresence>

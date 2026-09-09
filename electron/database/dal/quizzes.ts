@@ -4,13 +4,14 @@ import type {
   Hint,
   Question,
   Quiz,
+  QuizCreateInput,
   QuizMutationInput,
   QuizSummary,
 } from '../../../src/types';
 import { getDatabase } from '../connection';
 
 export type QuizRecord = Quiz;
-export type CreateQuizInput = QuizMutationInput;
+export type CreateQuizInput = QuizCreateInput;
 export type UpdateQuizInput = QuizMutationInput;
 
 type QuestionRow = Omit<Question, 'shuffle_answers'> & {
@@ -25,6 +26,7 @@ const QUIZ_SUMMARY_SELECT = `
   SELECT
     q.id,
     q.name,
+    q.timing_mode,
     q.logo_path,
     q.created_at,
     q.updated_at,
@@ -85,11 +87,17 @@ export function getQuizById(id: number): Quiz | null {
   );
 }
 
-export function createQuiz({ name }: CreateQuizInput): Quiz {
+export function createQuiz({
+  name,
+  timingMode = 'per_question',
+}: CreateQuizInput): Quiz {
+  if (!['per_question', 'per_contestant'].includes(timingMode)) {
+    throw new Error('יש לבחור מנגנון תזמון תקין.');
+  }
   const database = getDatabase();
   const result = database
-    .prepare('INSERT INTO quizzes (name) VALUES (?)')
-    .run(requireQuizName(name));
+    .prepare('INSERT INTO quizzes (name, timing_mode) VALUES (?, ?)')
+    .run(requireQuizName(name), timingMode);
   const quiz = getQuizById(Number(result.lastInsertRowid));
 
   if (!quiz) {
@@ -168,8 +176,8 @@ export function duplicateQuiz(id: number): Quiz {
       .all(id) as Hint[];
 
     const quizResult = database
-      .prepare('INSERT INTO quizzes (name) VALUES (?)')
-      .run(getNextCopyName(sourceQuiz.name));
+      .prepare('INSERT INTO quizzes (name, timing_mode) VALUES (?, ?)')
+      .run(getNextCopyName(sourceQuiz.name), sourceQuiz.timing_mode);
     const newQuizId = Number(quizResult.lastInsertRowid);
     const contestantIdMap = new Map<number, number>();
     const answersByQuestion = new Map<number, AnswerRow[]>();
@@ -189,8 +197,8 @@ export function duplicateQuiz(id: number): Quiz {
 
     const insertContestant = database.prepare(
       `
-        INSERT INTO contestants (quiz_id, name, display_order)
-        VALUES (?, ?, ?)
+        INSERT INTO contestants (quiz_id, name, display_order, total_time_limit)
+        VALUES (?, ?, ?, ?)
       `,
     );
 
@@ -199,6 +207,7 @@ export function duplicateQuiz(id: number): Quiz {
         newQuizId,
         contestant.name,
         contestant.display_order,
+        contestant.total_time_limit,
       );
       contestantIdMap.set(contestant.id, Number(result.lastInsertRowid));
     }

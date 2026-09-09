@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 
-import type { Quiz, QuizMutationInput, QuizSummary } from '../types';
+import type {
+  Quiz,
+  QuizCreateInput,
+  QuizMutationInput,
+  QuizSummary,
+} from '../types';
 
 interface QuizStore {
   quizzes: QuizSummary[];
@@ -10,7 +15,7 @@ interface QuizStore {
   setSearchTerm: (searchTerm: string) => void;
   clearError: () => void;
   refresh: (query?: string) => Promise<void>;
-  createQuiz: (data: QuizMutationInput) => Promise<Quiz>;
+  createQuiz: (data: QuizCreateInput) => Promise<Quiz>;
   updateQuiz: (id: number, data: QuizMutationInput) => Promise<Quiz | null>;
   deleteQuiz: (id: number) => Promise<boolean>;
   duplicateQuiz: (id: number) => Promise<Quiz>;

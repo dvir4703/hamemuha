@@ -6,25 +6,34 @@ import {
   TIME_LIMIT_MAX,
   TIME_LIMIT_MIN,
   TIME_LIMIT_STEP,
+  CONTESTANT_TIME_MIN,
+  CONTESTANT_TIME_MAX,
+  normalizeContestantTimeLimit,
 } from '../../utils/timeLimit';
 
 interface TimeLimitStepperProps {
   value: number;
+  scope?: 'question' | 'contestant';
   error?: string;
   onChange: (value: number) => void;
 }
 
 export function TimeLimitStepper({
   value,
+  scope = 'question',
   error,
   onChange,
 }: TimeLimitStepperProps) {
   const labelId = useId();
+  const isTotal = scope === 'contestant';
+  const min = isTotal ? CONTESTANT_TIME_MIN : TIME_LIMIT_MIN;
+  const max = isTotal ? CONTESTANT_TIME_MAX : TIME_LIMIT_MAX;
+  const normalize = isTotal ? normalizeContestantTimeLimit : normalizeTimeLimit;
 
   return (
     <div>
       <span id={labelId} className="mb-1.5 block text-xs font-bold text-ink/50">
-        מספר שניות
+        {isTotal ? 'זמן כולל' : 'מספר שניות'}
       </span>
       <div
         role="group"
@@ -35,8 +44,8 @@ export function TimeLimitStepper({
       >
         <button
           type="button"
-          onClick={() => onChange(normalizeTimeLimit(value - TIME_LIMIT_STEP))}
-          disabled={value <= TIME_LIMIT_MIN}
+          onClick={() => onChange(normalize(value - TIME_LIMIT_STEP))}
+          disabled={value <= min}
           aria-label="הפחתת 10 שניות"
           className="grid w-14 place-items-center border-r border-ink/10 text-violet transition hover:bg-violet/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-violet/15 disabled:cursor-not-allowed disabled:text-ink/20"
         >
@@ -53,8 +62,8 @@ export function TimeLimitStepper({
         </output>
         <button
           type="button"
-          onClick={() => onChange(normalizeTimeLimit(value + TIME_LIMIT_STEP))}
-          disabled={value >= TIME_LIMIT_MAX}
+          onClick={() => onChange(normalize(value + TIME_LIMIT_STEP))}
+          disabled={value >= max}
           aria-label="הוספת 10 שניות"
           className="grid w-14 place-items-center border-l border-ink/10 text-teal transition hover:bg-teal/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-teal/15 disabled:cursor-not-allowed disabled:text-ink/20"
         >
@@ -62,7 +71,9 @@ export function TimeLimitStepper({
         </button>
       </div>
       <span className="mt-1.5 block text-[11px] font-bold text-ink/35">
-        קפיצות של 10 שניות, עד 5 דקות
+        {isTotal
+          ? 'קפיצות של 10 שניות, מ־30 שניות עד 20 דקות'
+          : 'קפיצות של 10 שניות, עד 5 דקות'}
       </span>
       {error ? (
         <p className="mt-1.5 text-xs font-bold text-red-700">{error}</p>

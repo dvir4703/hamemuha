@@ -7,7 +7,12 @@ import type {
   ContestantUpdateInput,
   Hint,
   Question,
+  TimingMode,
 } from '../../../src/types';
+import {
+  CONTESTANT_TIME_DEFAULT,
+  isValidContestantTimeLimit,
+} from '../../../src/utils/timeLimit';
 import { getDatabase } from '../connection';
 
 export type ContestantRecord = Contestant;
@@ -29,6 +34,23 @@ function requireContestantName(name: string): string {
   }
 
   return trimmedName;
+}
+
+function resolveTotalTimeLimit(
+  database: Database.Database,
+  quizId: number,
+  value: number | null | undefined,
+): number | null {
+  const quiz = database
+    .prepare('SELECT timing_mode FROM quizzes WHERE id = ?')
+    .get(quizId) as { timing_mode: TimingMode } | undefined;
+  if (!quiz) throw new Error('החידון לא נמצא.');
+  if (quiz.timing_mode === 'per_question') return null;
+  const limit = value === undefined ? CONTESTANT_TIME_DEFAULT : value;
+  if (limit === null || !isValidContestantTimeLimit(limit)) {
+    throw new Error('הזמן הכולל חייב להיות כפולה של 10, בין 30 ל־1,200 שניות.');
+  }
+  return limit;
 }
 
 function getNextCopyName(
@@ -77,16 +99,22 @@ export function createContestant({
   quizId,
   name,
   displayOrder,
+  totalTimeLimit,
 }: ContestantCreateInput): Contestant {
   const database = getDatabase();
   const result = database
     .prepare(
       `
-        INSERT INTO contestants (quiz_id, name, display_order)
-        VALUES (?, ?, ?)
+        INSERT INTO contestants (quiz_id, name, display_order, total_time_limit)
+        VALUES (?, ?, ?, ?)
       `,
     )
-    .run(quizId, requireContestantName(name), displayOrder);
+    .run(
+      quizId,
+      requireContestantName(name),
+      displayOrder,
+      resolveTotalTimeLimit(database, quizId, totalTimeLimit),
+    );
   const contestant = database
     .prepare('SELECT * FROM contestants WHERE id = ?')
     .get(result.lastInsertRowid) as Contestant | undefined;
@@ -100,18 +128,27 @@ export function createContestant({
 
 export function updateContestant(
   id: number,
-  { name, displayOrder }: ContestantUpdateInput,
+  { name, displayOrder, totalTimeLimit }: ContestantUpdateInput,
 ): Contestant | null {
   const database = getDatabase();
+  const existing = database
+    .prepare('SELECT * FROM contestants WHERE id = ?')
+    .get(id) as Contestant | undefined;
+  if (!existing) return null;
+  const limit = resolveTotalTimeLimit(
+    database,
+    existing.quiz_id,
+    totalTimeLimit === undefined ? existing.total_time_limit : totalTimeLimit,
+  );
   const result = database
     .prepare(
       `
         UPDATE contestants
-        SET name = ?, display_order = ?
+        SET name = ?, display_order = ?, total_time_limit = ?
         WHERE id = ?
       `,
     )
-    .run(requireContestantName(name), displayOrder, id);
+    .run(requireContestantName(name), displayOrder, limit, id);
 
   if (result.changes === 0) {
     return null;
@@ -184,14 +221,15 @@ export function duplicateContestant(id: number): Contestant {
     const contestantResult = database
       .prepare(
         `
-          INSERT INTO contestants (quiz_id, name, display_order)
-          VALUES (?, ?, ?)
+          INSERT INTO contestants (quiz_id, name, display_order, total_time_limit)
+          VALUES (?, ?, ?, ?)
         `,
       )
       .run(
         source.quiz_id,
         getNextCopyName(database, source.quiz_id, source.name),
         nextOrder.value,
+        source.total_time_limit,
       );
     const newContestantId = Number(contestantResult.lastInsertRowid);
     const answersByQuestion = new Map<number, AnswerRow[]>();

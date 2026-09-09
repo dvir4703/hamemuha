@@ -64,8 +64,20 @@ export function seed(
     currentContestantId: 1,
     gamePhase: 'playing',
     contestants: [
-      { id: 1, quiz_id: 1, name: 'א', display_order: 1 },
-      { id: 2, quiz_id: 1, name: 'ב', display_order: 2 },
+      {
+        id: 1,
+        quiz_id: 1,
+        name: 'א',
+        display_order: 1,
+        total_time_limit: null,
+      },
+      {
+        id: 2,
+        quiz_id: 1,
+        name: 'ב',
+        display_order: 2,
+        total_time_limit: null,
+      },
     ],
     questionsByContestant: new Map([
       [1, questions],

@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run --config vitest.config.ts",
-    "test:electron": "pnpm build && node tests/electron.e2e.mjs"
+    "test:electron": "pnpm build && node tests/electron.e2e.mjs",
+    "test:timing": "pnpm build && node tests/timing.e2e.mjs"
   },
   "engines": {
     "node": ">=20.19.0",
