@@ -61,7 +61,10 @@ export interface LiveStoreState extends ContestantClockState {
   quiz: Quiz | null;
   contestants: Contestant[];
   questionsByContestant: Map<number, QuestionWithRelations[]>;
+  /** One-pass return visits in first-skip order, one queue per contestant. */
+  returnQueueByContestant: Map<number, number[]>;
   currentContestantId: number | null;
+  /** Cursor over the regular questions followed by the return queue. */
   currentQuestionIndexByContestant: Map<number, number>;
   gamePhase: GamePhase;
   scoresByContestant: Map<number, number>;
@@ -106,6 +109,7 @@ interface ResettableLiveState extends ContestantClockState {
   quiz: Quiz | null;
   contestants: Contestant[];
   questionsByContestant: Map<number, QuestionWithRelations[]>;
+  returnQueueByContestant: Map<number, number[]>;
   currentContestantId: number | null;
   currentQuestionIndexByContestant: Map<number, number>;
   gamePhase: GamePhase;
@@ -132,6 +136,7 @@ function createIdleState(): ResettableLiveState {
     quiz: null,
     contestants: [],
     questionsByContestant: new Map(),
+    returnQueueByContestant: new Map(),
     currentContestantId: null,
     currentQuestionIndexByContestant: new Map(),
     gamePhase: 'idle',
@@ -168,23 +173,58 @@ function getCurrentQuestion(state: {
   currentContestantId: number | null;
   currentQuestionIndexByContestant: Map<number, number>;
   questionsByContestant: Map<number, QuestionWithRelations[]>;
+  returnQueueByContestant: Map<number, number[]>;
 }): QuestionWithRelations | null {
   if (state.currentContestantId === null) return null;
-  const questions =
-    state.questionsByContestant.get(state.currentContestantId) ?? [];
-  const index =
-    state.currentQuestionIndexByContestant.get(state.currentContestantId) ?? 0;
-  return questions[index] ?? null;
+  return getQuestionAtVisitIndex(
+    state.questionsByContestant,
+    state.returnQueueByContestant,
+    state.currentContestantId,
+    state.currentQuestionIndexByContestant.get(state.currentContestantId) ?? 0,
+  );
+}
+
+function getQuestionAtVisitIndex(
+  questionsByContestant: Map<number, QuestionWithRelations[]>,
+  returnQueueByContestant: Map<number, number[]>,
+  contestantId: number,
+  visitIndex: number,
+): QuestionWithRelations | null {
+  const questions = questionsByContestant.get(contestantId) ?? [];
+  if (visitIndex < questions.length) return questions[visitIndex] ?? null;
+  const returnedQuestionId =
+    returnQueueByContestant.get(contestantId)?.[visitIndex - questions.length];
+  return returnedQuestionId === undefined
+    ? null
+    : (questions.find((question) => question.id === returnedQuestionId) ??
+        null);
+}
+
+function getQuestionVisitCount(
+  questionsByContestant: Map<number, QuestionWithRelations[]>,
+  returnQueueByContestant: Map<number, number[]>,
+  contestantId: number,
+): number {
+  return (
+    (questionsByContestant.get(contestantId)?.length ?? 0) +
+    (returnQueueByContestant.get(contestantId)?.length ?? 0)
+  );
 }
 
 function basePointsForContestant(
   questionsByContestant: Map<number, QuestionWithRelations[]>,
   indexes: Map<number, number>,
   contestantId: number,
+  returnQueueByContestant: Map<number, number[]>,
   fiftyFifty: Map<number, number[]> = new Map(),
 ): number {
   const index = indexes.get(contestantId) ?? 0;
-  const question = questionsByContestant.get(contestantId)?.[index];
+  const question = getQuestionAtVisitIndex(
+    questionsByContestant,
+    returnQueueByContestant,
+    contestantId,
+    index,
+  );
   return question
     ? calculatePotentialPoints(question, 0, fiftyFifty.has(question.id))
     : 0;
@@ -194,13 +234,20 @@ function haveAllContestantsFinished(
   contestants: Contestant[],
   questionsByContestant: Map<number, QuestionWithRelations[]>,
   indexes: Map<number, number>,
+  returnQueueByContestant: Map<number, number[]>,
 ): boolean {
   return (
     contestants.length > 0 &&
     contestants.every((contestant) => {
-      const questions = questionsByContestant.get(contestant.id) ?? [];
       const currentIndex = indexes.get(contestant.id) ?? 0;
-      return currentIndex >= questions.length;
+      return (
+        currentIndex >=
+        getQuestionVisitCount(
+          questionsByContestant,
+          returnQueueByContestant,
+          contestant.id,
+        )
+      );
     })
   );
 }
@@ -311,6 +358,7 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
           number,
           QuestionWithRelations[]
         >();
+        const returnQueues = new Map<number, number[]>();
         const indexes = new Map<number, number>();
         const scores = new Map<number, number>();
         const stats = new Map<number, ContestantLiveStats>();
@@ -318,6 +366,7 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
 
         for (const contestant of contestants) {
           questionsByContestant.set(contestant.id, []);
+          returnQueues.set(contestant.id, []);
           indexes.set(contestant.id, 0);
           scores.set(contestant.id, 0);
           stats.set(contestant.id, { correct: 0, wrong: 0, hintsUsed: 0 });
@@ -354,6 +403,7 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
           quiz: loadedQuiz,
           contestants,
           questionsByContestant,
+          returnQueueByContestant: returnQueues,
           currentContestantId,
           currentQuestionIndexByContestant: indexes,
           gamePhase: 'opening',
@@ -373,6 +423,7 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
                   questionsByContestant,
                   indexes,
                   currentContestantId,
+                  returnQueues,
                 ),
           lastAnswerResult: null,
           previousGamePhase: null,
@@ -406,6 +457,7 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
         state.contestants,
         state.questionsByContestant,
         state.currentQuestionIndexByContestant,
+        state.returnQueueByContestant,
       );
       const hasCurrentQuestion = getCurrentQuestion(state) !== null;
       set({
@@ -437,15 +489,25 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
       const indexes = new Map(state.currentQuestionIndexByContestant);
       for (const [id, expiry] of state.timeExpiryByContestant) {
         if (expiry.answered)
-          indexes.set(id, state.questionsByContestant.get(id)?.length ?? 0);
+          indexes.set(
+            id,
+            getQuestionVisitCount(
+              state.questionsByContestant,
+              state.returnQueueByContestant,
+              id,
+            ),
+          );
       }
 
       const isChangingContestant = contestant.id !== state.currentContestantId;
       const currentQuestion = getCurrentQuestion(state);
       const targetQuestionIndex = indexes.get(contestant.id) ?? 0;
-      const targetQuestion =
-        state.questionsByContestant.get(contestant.id)?.[targetQuestionIndex] ??
-        null;
+      const targetQuestion = getQuestionAtVisitIndex(
+        state.questionsByContestant,
+        state.returnQueueByContestant,
+        contestant.id,
+        targetQuestionIndex,
+      );
       const isChangingQuestion = currentQuestion?.id !== targetQuestion?.id;
       const isReenteringAnsweredQuestion = Boolean(
         !isChangingQuestion &&
@@ -486,6 +548,7 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
               state.questionsByContestant,
               indexes,
               contestant.id,
+              state.returnQueueByContestant,
               state.fiftyFiftyHiddenIdsByQuestion,
             )
           : state.potentialPointsForCurrentQuestion,
@@ -497,6 +560,7 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
           state.contestants,
           state.questionsByContestant,
           indexes,
+          state.returnQueueByContestant,
         ) &&
         nextPhase === 'playing'
       ) {
@@ -519,22 +583,58 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
       const questions = state.questionsByContestant.get(contestantId) ?? [];
       const currentIndex =
         state.currentQuestionIndexByContestant.get(contestantId) ?? 0;
+      const currentQuestion = getCurrentQuestion(state);
+      if (!currentQuestion) return;
       const expiry = state.timeExpiryByContestant.get(contestantId);
       if (expiry && !expiry.answered) return;
+
+      let returnQueues = state.returnQueueByContestant;
+      if (
+        currentIndex < questions.length &&
+        !state.answeredQuestionsLog.has(
+          getAnsweredQuestionLogKey(contestantId, currentQuestion.id),
+        )
+      ) {
+        const currentQueue = returnQueues.get(contestantId) ?? [];
+        if (!currentQueue.includes(currentQuestion.id)) {
+          returnQueues = new Map(returnQueues);
+          returnQueues.set(contestantId, [...currentQueue, currentQuestion.id]);
+        }
+      }
+
       const nextIndex = expiry
-        ? questions.length
-        : Math.min(currentIndex + 1, questions.length);
+        ? getQuestionVisitCount(
+            state.questionsByContestant,
+            returnQueues,
+            contestantId,
+          )
+        : Math.min(
+            currentIndex + 1,
+            getQuestionVisitCount(
+              state.questionsByContestant,
+              returnQueues,
+              contestantId,
+            ),
+          );
       if (nextIndex === currentIndex) return;
       const indexes = new Map(state.currentQuestionIndexByContestant);
       indexes.set(contestantId, nextIndex);
+      const nextQuestion = getQuestionAtVisitIndex(
+        state.questionsByContestant,
+        returnQueues,
+        contestantId,
+        nextIndex,
+      );
       const shouldEndGame = haveAllContestantsFinished(
         state.contestants,
         state.questionsByContestant,
         indexes,
+        returnQueues,
       );
       set({
+        returnQueueByContestant: returnQueues,
         currentQuestionIndexByContestant: indexes,
-        questionEntrySequence: questions[nextIndex]
+        questionEntrySequence: nextQuestion
           ? state.questionEntrySequence + 1
           : state.questionEntrySequence,
         revealedHintsForCurrentQuestion: 0,
@@ -543,6 +643,7 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
           state.questionsByContestant,
           indexes,
           contestantId,
+          returnQueues,
           state.fiftyFiftyHiddenIdsByQuestion,
         ),
         gamePhase: 'playing',
@@ -566,16 +667,21 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
       }
       const contestantId = state.currentContestantId;
       if (state.timeExpiryByContestant.has(contestantId)) return;
-      const questions = state.questionsByContestant.get(contestantId) ?? [];
       const currentIndex =
         state.currentQuestionIndexByContestant.get(contestantId) ?? 0;
       const previousIndex = Math.max(currentIndex - 1, 0);
       if (previousIndex === currentIndex) return;
       const indexes = new Map(state.currentQuestionIndexByContestant);
       indexes.set(contestantId, previousIndex);
+      const previousQuestion = getQuestionAtVisitIndex(
+        state.questionsByContestant,
+        state.returnQueueByContestant,
+        contestantId,
+        previousIndex,
+      );
       set({
         currentQuestionIndexByContestant: indexes,
-        questionEntrySequence: questions[previousIndex]
+        questionEntrySequence: previousQuestion
           ? state.questionEntrySequence + 1
           : state.questionEntrySequence,
         revealedHintsForCurrentQuestion: 0,
@@ -584,6 +690,7 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
           state.questionsByContestant,
           indexes,
           contestantId,
+          state.returnQueueByContestant,
           state.fiftyFiftyHiddenIdsByQuestion,
         ),
         gamePhase: 'playing',
@@ -759,9 +866,28 @@ export const useLiveStore = create<LiveStoreState>((rawSet, get) => {
         isCorrect,
         pointsAwarded: awardedPoints,
       });
+      let returnQueues = state.returnQueueByContestant;
+      const currentVisitIndex =
+        state.currentQuestionIndexByContestant.get(contestantId) ?? 0;
+      const regularQuestionCount =
+        state.questionsByContestant.get(contestantId)?.length ?? 0;
+      // Manual back-navigation can resolve a skipped question from its regular
+      // slot. Remove that queued duplicate; submissions made inside the return
+      // segment keep the visit so ArrowLeft/ArrowRight can re-enter it for 6ט.
+      if (currentVisitIndex < regularQuestionCount) {
+        const currentQueue = returnQueues.get(contestantId) ?? [];
+        if (currentQueue.includes(question.id)) {
+          returnQueues = new Map(returnQueues);
+          returnQueues.set(
+            contestantId,
+            currentQueue.filter((questionId) => questionId !== question.id),
+          );
+        }
+      }
       const expiries = new Map(state.timeExpiryByContestant);
       if (expiry) expiries.set(contestantId, { ...expiry, answered: true });
       set({
+        returnQueueByContestant: returnQueues,
         timeExpiryByContestant: expiries,
         scoresByContestant: scores,
         statsByContestant: stats,

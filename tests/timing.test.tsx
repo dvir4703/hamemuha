@@ -129,12 +129,125 @@ describe('per-contestant time accounting', () => {
     act(() => state().tickContestantTimer());
     expect(hook.result.current.remainingSeconds).toBe(28);
     act(() => {
+      state().submitAnswer(true, 10);
       state().nextQuestion();
+      state().submitAnswer(true, 10);
       state().nextQuestion();
+      state().submitAnswer(true, 10);
       state().nextQuestion();
     });
+    expect(selectCurrentQuestion(state())).toBeNull();
     advance(10000);
     expect(hook.result.current.remainingSeconds).toBe(28);
+  });
+
+  it('keeps one continuous budget while skipped questions return in FIFO order', () => {
+    seedTimed(
+      Array.from({ length: 5 }, (_, index) =>
+        question('open_answer', index + 1),
+      ),
+    );
+    const hook = renderHook(() => useContestantTimer(false));
+
+    advance(1000);
+    act(() => state().nextQuestion());
+    advance(1500);
+    act(() => state().nextQuestion());
+
+    advance(1000);
+    act(() => {
+      state().submitAnswer(true, 10);
+    });
+    advance(5000);
+    act(() => state().nextQuestion());
+    advance(1000);
+    act(() => {
+      state().submitAnswer(true, 10);
+      state().nextQuestion();
+    });
+    advance(1000);
+    act(() => {
+      state().submitAnswer(true, 10);
+      state().nextQuestion();
+    });
+
+    expect(state().returnQueueByContestant.get(1)).toEqual([1, 2]);
+    expect(selectCurrentQuestion(state())?.id).toBe(1);
+    expect(state().remainingTimeMsByContestant.get(1)).toBe(24500);
+    expect(hook.result.current.remainingSeconds).toBe(25);
+
+    advance(1200);
+    act(() => {
+      state().submitAnswer(true, 10);
+      state().nextQuestion();
+    });
+    expect(selectCurrentQuestion(state())?.id).toBe(2);
+    expect(state().remainingTimeMsByContestant.get(1)).toBe(23300);
+
+    advance(800);
+    act(() => {
+      state().submitAnswer(true, 10);
+      state().nextQuestion();
+    });
+    expect(selectCurrentQuestion(state())).toBeNull();
+    expect(state().remainingTimeMsByContestant.get(1)).toBe(22500);
+    expect(state().scoresByContestant.get(1)).toBe(50);
+    expect(state().statsByContestant.get(1)).toMatchObject({
+      correct: 5,
+      wrong: 0,
+    });
+  });
+
+  it('ends after a zero-point answer on an expired returned question and abandons the remaining queue', () => {
+    seedTimed(
+      Array.from({ length: 5 }, (_, index) =>
+        question('open_answer', index + 1),
+      ),
+    );
+    renderHook(() => useContestantTimer(false));
+
+    act(() => {
+      state().nextQuestion();
+      state().nextQuestion();
+      state().submitAnswer(true, 10);
+      state().nextQuestion();
+      state().submitAnswer(true, 10);
+      state().nextQuestion();
+      state().submitAnswer(true, 10);
+      state().nextQuestion();
+    });
+    expect(state().returnQueueByContestant.get(1)).toEqual([1, 2]);
+    expect(selectCurrentQuestion(state())?.id).toBe(1);
+
+    advance(30000);
+    expect(state().timeExpiryByContestant.get(1)).toEqual({
+      questionId: 1,
+      answered: false,
+    });
+    act(() => state().nextQuestion());
+    expect(selectCurrentQuestion(state())?.id).toBe(1);
+
+    act(() => state().submitAnswer(true, 10));
+    expect(state().lastAnswerResult).toMatchObject({
+      questionId: 1,
+      isCorrect: true,
+      pointsAwarded: 0,
+      wasTimeout: true,
+    });
+    act(() => state().nextQuestion());
+
+    expect(selectCurrentQuestion(state())).toBeNull();
+    expect(state().answeredQuestionsLog.has('1:2')).toBe(false);
+    expect(
+      buildScoreboardEntries(
+        state().contestants,
+        state().scoresByContestant,
+        state().statsByContestant,
+      ).find((entry) => entry.contestant.id === 1),
+    ).toMatchObject({ score: 30, answered: 4, correct: 4, wrong: 0 });
+
+    state().resetGame();
+    expect(state().returnQueueByContestant.size).toBe(0);
   });
 
   it('settles expiration at submission and navigation even if no display tick has fired', () => {
@@ -267,6 +380,7 @@ describe('per-contestant time accounting', () => {
     expect(state().remainingTimeMsByContestant.get(2)).toBe(55000);
     state().resetGame();
     expect(state().remainingTimeMsByContestant.size).toBe(0);
+    expect(state().returnQueueByContestant.size).toBe(0);
   });
 });
 

@@ -29,6 +29,7 @@ import {
   parseRevealPositions,
   resolveLetterHintPositions,
 } from '../src/utils/letterReveal';
+import { buildScoreboardEntries } from '../src/utils/scoreboard';
 import { question, seed, types } from './fixtures';
 
 function Harness({ blocked = false }: { blocked?: boolean }) {
@@ -265,6 +266,210 @@ describe('live controls and screens', () => {
     expect(useLiveStore.getState().potentialPointsForCurrentQuestion).toBe(10);
   });
 
+  it('returns skipped questions in FIFO order with full points and scoreboard credit', () => {
+    const questions = Array.from({ length: 5 }, (_, index) =>
+      question('open_answer', index + 1),
+    );
+    seed(questions);
+    const currentQuestionId = () =>
+      selectCurrentQuestion(useLiveStore.getState())?.id;
+
+    expect(currentQuestionId()).toBe(1);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBe(2);
+    expect(useLiveStore.getState().returnQueueByContestant.get(1)).toEqual([1]);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBe(3);
+    expect(useLiveStore.getState().returnQueueByContestant.get(1)).toEqual([
+      1, 2,
+    ]);
+
+    for (const id of [3, 4, 5]) {
+      expect(currentQuestionId()).toBe(id);
+      act(() => useLiveStore.getState().submitAnswer(true, 10));
+      expect(useLiveStore.getState().lastAnswerResult?.pointsAwarded).toBe(10);
+      act(() => useLiveStore.getState().nextQuestion());
+    }
+
+    expect(currentQuestionId()).toBe(1);
+    act(() => useLiveStore.getState().previousQuestion());
+    expect(currentQuestionId()).toBe(5);
+    expect(useLiveStore.getState().returnQueueByContestant.get(1)).toEqual([
+      1, 2,
+    ]);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBe(1);
+    expect(useLiveStore.getState().potentialPointsForCurrentQuestion).toBe(10);
+    act(() => useLiveStore.getState().submitAnswer(true, 10));
+    expect(useLiveStore.getState().lastAnswerResult?.pointsAwarded).toBe(10);
+    act(() => useLiveStore.getState().previousQuestion());
+    expect(currentQuestionId()).toBe(5);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBe(1);
+    expect(useLiveStore.getState().gamePhase).toBe('playing');
+    act(() => useLiveStore.getState().submitAnswer(true, 10));
+    expect(useLiveStore.getState().scoresByContestant.get(1)).toBe(40);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBe(2);
+    expect(useLiveStore.getState().potentialPointsForCurrentQuestion).toBe(10);
+    act(() => useLiveStore.getState().submitAnswer(true, 10));
+    expect(useLiveStore.getState().lastAnswerResult?.pointsAwarded).toBe(10);
+    act(() => useLiveStore.getState().nextQuestion());
+
+    const state = useLiveStore.getState();
+    expect(currentQuestionId()).toBeUndefined();
+    expect(state.returnQueueByContestant.get(1)).toEqual([1, 2]);
+    expect(state.scoresByContestant.get(1)).toBe(50);
+    expect(state.statsByContestant.get(1)).toEqual({
+      correct: 5,
+      wrong: 0,
+      hintsUsed: 0,
+    });
+    expect(state.answeredQuestionsLog.size).toBe(5);
+    expect(
+      buildScoreboardEntries(
+        state.contestants,
+        state.scoresByContestant,
+        state.statsByContestant,
+      ).find((entry) => entry.contestant.id === 1),
+    ).toMatchObject({ score: 50, answered: 5, correct: 5, wrong: 0 });
+  });
+
+  it('renders a returned question as active with its original question number', () => {
+    vi.useFakeTimers();
+    const questions = Array.from({ length: 5 }, (_, index) =>
+      question('open_answer', index + 1),
+    );
+    seed(questions);
+    useLiveStore.setState({
+      returnQueueByContestant: new Map([
+        [1, [1]],
+        [2, []],
+      ]),
+      currentQuestionIndexByContestant: new Map([
+        [1, questions.length],
+        [2, 0],
+      ]),
+    });
+
+    render(
+      <MemoryRouter
+        initialEntries={['/quiz/1/live']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <Routes>
+          <Route path="/quiz/:id/live" element={<LiveGame />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: 'שאלה 1' })).toBeTruthy();
+    expect(
+      screen.getByRole('complementary', { name: 'שאלה 1 מתוך 5' }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/יישר כוח/)).toBeNull();
+  });
+
+  it('finishes after a returned question is skipped again without looping', () => {
+    seed([
+      question('open_answer', 1),
+      question('open_answer', 2),
+      question('open_answer', 3),
+    ]);
+    const currentQuestionId = () =>
+      selectCurrentQuestion(useLiveStore.getState())?.id;
+
+    act(() => useLiveStore.getState().nextQuestion());
+    for (const id of [2, 3]) {
+      expect(currentQuestionId()).toBe(id);
+      act(() => {
+        useLiveStore.getState().submitAnswer(true, 10);
+        useLiveStore.getState().nextQuestion();
+      });
+    }
+    expect(currentQuestionId()).toBe(1);
+
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBeUndefined();
+    expect(useLiveStore.getState().returnQueueByContestant.get(1)).toEqual([1]);
+    expect(useLiveStore.getState().answeredQuestionsLog.has('1:1')).toBe(false);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBeUndefined();
+
+    const state = useLiveStore.getState();
+    expect(
+      buildScoreboardEntries(
+        state.contestants,
+        state.scoresByContestant,
+        state.statsByContestant,
+      ).find((entry) => entry.contestant.id === 1),
+    ).toMatchObject({ score: 20, answered: 2, correct: 2, wrong: 0 });
+  });
+
+  it('keeps ArrowLeft and answered-question reentry separate from the return queue', () => {
+    seed(
+      Array.from({ length: 4 }, (_, index) =>
+        question('open_answer', index + 1),
+      ),
+    );
+    const currentQuestionId = () =>
+      selectCurrentQuestion(useLiveStore.getState())?.id;
+
+    act(() => useLiveStore.getState().submitAnswer(false, 0));
+    const sequenceBeforeReentry = useLiveStore.getState().questionEntrySequence;
+    act(() => useLiveStore.getState().jumpToContestant(1));
+    expect(currentQuestionId()).toBe(1);
+    expect(useLiveStore.getState().gamePhase).toBe('playing');
+    expect(useLiveStore.getState().lastAnswerResult).toBeNull();
+    expect(useLiveStore.getState().questionEntrySequence).toBe(
+      sequenceBeforeReentry + 1,
+    );
+    act(() => useLiveStore.getState().submitAnswer(true, 10));
+    expect(useLiveStore.getState().scoresByContestant.get(1)).toBe(10);
+    expect(useLiveStore.getState().statsByContestant.get(1)).toMatchObject({
+      correct: 1,
+      wrong: 0,
+    });
+
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBe(2);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBe(3);
+    expect(useLiveStore.getState().returnQueueByContestant.get(1)).toEqual([2]);
+
+    act(() => useLiveStore.getState().previousQuestion());
+    expect(currentQuestionId()).toBe(2);
+    act(() => {
+      useLiveStore.getState().submitAnswer(true, 10);
+      useLiveStore.getState().nextQuestion();
+    });
+    expect(currentQuestionId()).toBe(3);
+
+    act(() => useLiveStore.getState().previousQuestion());
+    expect(currentQuestionId()).toBe(2);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBe(3);
+    expect(useLiveStore.getState().returnQueueByContestant.get(1)).toEqual([]);
+
+    for (const id of [3, 4]) {
+      expect(currentQuestionId()).toBe(id);
+      act(() => {
+        useLiveStore.getState().submitAnswer(true, 10);
+        useLiveStore.getState().nextQuestion();
+      });
+    }
+    expect(currentQuestionId()).toBeUndefined();
+    act(() => useLiveStore.getState().previousQuestion());
+    expect(currentQuestionId()).toBe(4);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBeUndefined();
+    expect(useLiveStore.getState().scoresByContestant.get(1)).toBe(40);
+    expect(useLiveStore.getState().statsByContestant.get(1)).toMatchObject({
+      correct: 4,
+      wrong: 0,
+    });
+  });
+
   it('opens exit confirmation with Escape from opening and returns home only after confirmation', () => {
     vi.useFakeTimers();
     seed();
@@ -440,6 +645,58 @@ describe('audio, timer and data compatibility', () => {
       vi.advanceTimersByTime(10000);
     });
     expect(hook.result.current.hasExpired).toBe(true);
+  });
+  it('restarts a per-question timer when each skipped question returns', () => {
+    vi.useFakeTimers();
+    seed(
+      Array.from({ length: 5 }, (_, index) => ({
+        ...question('open_answer', index + 1),
+        time_limit: 10,
+      })),
+    );
+    const timer = renderHook(() => {
+      const currentQuestion = useLiveStore(selectCurrentQuestion);
+      const gamePhase = useLiveStore((state) => state.gamePhase);
+      const questionEntrySequence = useLiveStore(
+        (state) => state.questionEntrySequence,
+      );
+      return useQuestionTimer(
+        currentQuestion?.id ?? null,
+        currentQuestion?.time_limit ?? null,
+        gamePhase === 'playing',
+        questionEntrySequence,
+      );
+    });
+    const currentQuestionId = () =>
+      selectCurrentQuestion(useLiveStore.getState())?.id;
+
+    act(() => vi.advanceTimersByTime(2000));
+    expect(timer.result.current.remainingSeconds).toBe(8);
+    act(() => useLiveStore.getState().nextQuestion());
+    expect(currentQuestionId()).toBe(2);
+    expect(timer.result.current.remainingSeconds).toBe(10);
+    act(() => vi.advanceTimersByTime(3000));
+    expect(timer.result.current.remainingSeconds).toBe(7);
+    act(() => useLiveStore.getState().nextQuestion());
+
+    for (const id of [3, 4, 5]) {
+      expect(currentQuestionId()).toBe(id);
+      act(() => {
+        useLiveStore.getState().submitAnswer(true, 10);
+        useLiveStore.getState().nextQuestion();
+      });
+    }
+
+    expect(currentQuestionId()).toBe(1);
+    expect(timer.result.current.remainingSeconds).toBe(10);
+    expect(timer.result.current.hasExpired).toBe(false);
+    act(() => {
+      useLiveStore.getState().submitAnswer(true, 10);
+      useLiveStore.getState().nextQuestion();
+    });
+    expect(currentQuestionId()).toBe(2);
+    expect(timer.result.current.remainingSeconds).toBe(10);
+    expect(timer.result.current.hasExpired).toBe(false);
   });
   it('legacy scalar indexes/letters, JSON arrays, invalid data and spaces', () => {
     expect(parseRevealPositions('3')).toEqual([3]);

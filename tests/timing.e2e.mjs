@@ -248,6 +248,8 @@ try {
   await page.keyboard.press('?');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
+  await expect(page.getByText('לצאת מהמשחק?', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'ביטול', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await screenshot('total-timer.png');
   if (process.env.TIMING_VISUAL_QA === '1') {
@@ -330,6 +332,8 @@ try {
   assert.equal(await remaining(), help);
   await expect.poll(activeLoops).toEqual([]);
   await page.keyboard.press('Escape');
+  await expect(page.getByText('לצאת מהמשחק?', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'ביטול', exact: true }).click();
   await page.keyboard.press('F1');
   await expect(page.locator('.live-feedback')).toBeVisible();
   await expect.poll(activeLoops).toEqual([]);

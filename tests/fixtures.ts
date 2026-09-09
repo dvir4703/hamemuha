@@ -83,6 +83,10 @@ export function seed(
       [1, questions],
       [2, [question('multiple_choice', 100)]],
     ]),
+    returnQueueByContestant: new Map([
+      [1, []],
+      [2, []],
+    ]),
     currentQuestionIndexByContestant: new Map([
       [1, 0],
       [2, 0],

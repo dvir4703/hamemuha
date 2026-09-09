@@ -32,9 +32,6 @@ export default function LiveGame() {
   const currentContestantId = useLiveStore(
     (state) => state.currentContestantId,
   );
-  const currentIndexes = useLiveStore(
-    (state) => state.currentQuestionIndexByContestant,
-  );
   const scores = useLiveStore((state) => state.scoresByContestant);
   const stats = useLiveStore((state) => state.statsByContestant);
   const gamePhase = useLiveStore((state) => state.gamePhase);
@@ -142,20 +139,22 @@ export default function LiveGame() {
   const currentQuestions = currentContestantId
     ? (questionsByContestant.get(currentContestantId) ?? [])
     : [];
-  const currentIndex = currentContestantId
-    ? (currentIndexes.get(currentContestantId) ?? 0)
-    : 0;
   const currentScore = currentContestantId
     ? (scores.get(currentContestantId) ?? 0)
     : 0;
   const contestantFinished =
-    currentQuestions.length === 0 || currentIndex >= currentQuestions.length;
+    currentQuestions.length === 0 || currentQuestion === null;
+  const originalQuestionIndex = currentQuestion
+    ? currentQuestions.findIndex(
+        (question) => question.id === currentQuestion.id,
+      )
+    : -1;
   const displayedQuestionNumber =
     currentQuestions.length === 0
       ? 0
-      : contestantFinished
+      : originalQuestionIndex < 0
         ? currentQuestions.length
-        : Math.min(currentIndex + 1, currentQuestions.length);
+        : originalQuestionIndex + 1;
   const exitConfirmationDialog = (
     <LiveConfirmationDialog
       open={exitConfirmationOpen}
