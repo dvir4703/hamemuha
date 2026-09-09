@@ -33,7 +33,7 @@ function FormHarness() {
     </>
   );
 }
-it('multi-selection toggles, prereveal remains independent, duplicates across hints are blocked, answer edits drop invalid indexes', () => {
+it('blocks every letter already used by prereveal or another reveal hint', () => {
   render(<FormHarness />);
   const pre = within(
     screen.getByRole('group', { name: 'בחירת אותיות גלויות מראש' }),
@@ -41,23 +41,32 @@ it('multi-selection toggles, prereveal remains independent, duplicates across hi
   const hint = within(
     screen.getByRole('group', { name: 'בחירת מיקומי אותיות לרמז 1' }),
   );
-  fireEvent.click(pre.getByRole('button', { name: 'ב, מיקום 2' }));
+  expect(
+    pre.getByRole('button', { name: 'ב, מיקום 2' }).hasAttribute('disabled'),
+  ).toBe(true);
+  expect(
+    pre.getByRole('button', { name: 'ד, מיקום 5' }).hasAttribute('disabled'),
+  ).toBe(true);
+  fireEvent.click(pre.getByRole('button', { name: 'א, מיקום 1' }));
+  expect(
+    hint.getByRole('button', { name: 'א, מיקום 1' }).hasAttribute('disabled'),
+  ).toBe(true);
   fireEvent.click(hint.getByRole('button', { name: 'ג, מיקום 4' }));
   expect(screen.getByRole('status').textContent).toBe(
-    '{"pre":[1],"hints":[[1,3],[4]]}',
+    '{"pre":[0],"hints":[[1,3],[4]]}',
   );
   expect(
     hint.getByRole('button', { name: 'ד, מיקום 5' }).hasAttribute('disabled'),
   ).toBe(true);
   fireEvent.click(hint.getByRole('button', { name: 'ג, מיקום 4' }));
   expect(screen.getByRole('status').textContent).toBe(
-    '{"pre":[1],"hints":[[1],[4]]}',
+    '{"pre":[0],"hints":[[1],[4]]}',
   );
   fireEvent.change(screen.getByLabelText('המילה או הביטוי החסרים'), {
     target: { value: 'א' },
   });
   expect(screen.getByRole('status').textContent).toBe(
-    '{"pre":[],"hints":[[],[]]}',
+    '{"pre":[0],"hints":[[],[]]}',
   );
 });
 it('association editor requires only answer options', () => {

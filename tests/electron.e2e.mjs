@@ -113,6 +113,11 @@ try {
   await expect(page.getByRole('img', { name: /החידון והחוויה/ })).toBeVisible();
   await expect(page.getByText('התחל!', { exact: true })).toBeVisible();
   await screenshot('opening-branding.png');
+  await page.keyboard.press('Escape');
+  await expect(page.getByText('לצאת מהמשחק?', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'ביטול', exact: true }).click();
+  await expect(page.getByText('לצאת מהמשחק?', { exact: true })).toBeHidden();
+  await expect(page.locator('.live-opening')).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(page.locator('.live-intro-video__media')).toBeVisible();
   await page.keyboard.press('Enter');
@@ -199,10 +204,20 @@ try {
     location.hash = '/quizzes/1/questions/3/edit';
   });
   await expect(page.getByLabel('המילה או הביטוי החסרים')).toHaveValue('אב גד');
+  await expect(
+    page
+      .getByRole('group', { name: 'בחירת אותיות גלויות מראש' })
+      .getByRole('button', { name: 'ב, מיקום 2', exact: true }),
+  ).toBeDisabled();
   await page
     .getByRole('group', { name: 'בחירת אותיות גלויות מראש' })
     .getByRole('button', { name: 'א, מיקום 1', exact: true })
     .click();
+  await expect(
+    page
+      .getByRole('group', { name: 'בחירת מיקומי אותיות לרמז 1' })
+      .getByRole('button', { name: 'א, מיקום 1', exact: true }),
+  ).toBeDisabled();
   await page
     .getByRole('group', { name: 'בחירת מיקומי אותיות לרמז 1' })
     .getByRole('button', { name: 'ג, מיקום 4', exact: true })
@@ -487,6 +502,10 @@ try {
   console.log(
     'PASS: types 5/6, scoreboard and persisted results; no renderer errors',
   );
+  await page.keyboard.press('Escape');
+  await expect(page.getByText('לצאת מהמשחק?', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'יציאה מהמשחק', exact: true }).click();
+  await page.waitForURL('**#/');
   await app.close();
   app = undefined;
   // Opening the same migrated database again must not ALTER it a second time.

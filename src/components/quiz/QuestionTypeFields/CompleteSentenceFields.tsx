@@ -29,6 +29,9 @@ export function CompleteSentenceFields({
   onHintsChange,
 }: CompleteSentenceFieldsProps) {
   const revealPositions = getRevealablePositions(correctAnswerText);
+  const positionsUsedByLetterHints = hints
+    .filter((hint) => hint.hintType === 'letter_reveal')
+    .flatMap((hint) => parseRevealPositions(hint.hintText));
 
   const updateHint = (key: string, changes: Partial<HintDraft>) => {
     onHintsChange(
@@ -94,6 +97,7 @@ export function CompleteSentenceFields({
         <LetterPositionPicker
           answer={correctAnswerText}
           selected={prerevealedPositions}
+          unavailable={positionsUsedByLetterHints}
           label="בחירת אותיות גלויות מראש"
           onChange={onPrerevealedPositionsChange}
         />
@@ -193,15 +197,18 @@ export function CompleteSentenceFields({
                     <LetterPositionPicker
                       answer={correctAnswerText}
                       selected={parseRevealPositions(hint.hintText)}
-                      unavailable={hints
-                        .filter(
-                          (other) =>
-                            other.key !== hint.key &&
-                            other.hintType === 'letter_reveal',
-                        )
-                        .flatMap((other) =>
-                          parseRevealPositions(other.hintText),
-                        )}
+                      unavailable={[
+                        ...prerevealedPositions,
+                        ...hints
+                          .filter(
+                            (other) =>
+                              other.key !== hint.key &&
+                              other.hintType === 'letter_reveal',
+                          )
+                          .flatMap((other) =>
+                            parseRevealPositions(other.hintText),
+                          ),
+                      ]}
                       label={`בחירת מיקומי אותיות לרמז ${index + 1}`}
                       onChange={(positions) =>
                         updateHint(hint.key, {

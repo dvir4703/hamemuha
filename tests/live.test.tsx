@@ -265,6 +265,68 @@ describe('live controls and screens', () => {
     expect(useLiveStore.getState().potentialPointsForCurrentQuestion).toBe(10);
   });
 
+  it('opens exit confirmation with Escape from opening and returns home only after confirmation', () => {
+    vi.useFakeTimers();
+    seed();
+    useLiveStore.setState({ gamePhase: 'opening' });
+    render(
+      <MemoryRouter
+        initialEntries={['/quiz/1/live']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <Routes>
+          <Route path="/" element={<div>מסך הבית</div>} />
+          <Route path="/quiz/:id/live" element={<LiveGame />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    key('Escape');
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByText('לצאת מהמשחק?')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'ביטול' }));
+    expect(document.querySelector('.live-opening')).toBeTruthy();
+    key('Escape');
+    fireEvent.click(screen.getByRole('button', { name: 'יציאה מהמשחק' }));
+    expect(screen.getByText('מסך הבית')).toBeTruthy();
+    expect(useLiveStore.getState().gamePhase).toBe('idle');
+  });
+
+  it('opens exit confirmation with Escape even while the shortcut sheet is open', () => {
+    vi.useFakeTimers();
+    seed();
+    render(
+      <MemoryRouter
+        initialEntries={['/quiz/1/live']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <Routes>
+          <Route path="/quiz/:id/live" element={<LiveGame />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    key('?');
+    expect(screen.getByText('קיצורי מקלדת בלייב')).toBeTruthy();
+    key('Escape');
+    expect(screen.getByText('לצאת מהמשחק?')).toBeTruthy();
+  });
+
+  it('prevents native F-key behavior and gates F1/F2/F4 by question context', () => {
+    seed([question('open_answer')]);
+    render(<Harness />);
+    expect(key('F4').defaultPrevented).toBe(true);
+    expect(useLiveStore.getState().revealedHintsForCurrentQuestion).toBe(0);
+    expect(key('F2').defaultPrevented).toBe(true);
+    expect(useLiveStore.getState().lastAnswerResult?.isCorrect).toBe(false);
+
+    seed([question('multiple_choice')]);
+    expect(key('F1').defaultPrevented).toBe(true);
+    expect(useLiveStore.getState().gamePhase).toBe('playing');
+    expect(
+      key('F4', { key: 'Unidentified', code: 'F4' }).defaultPrevented,
+    ).toBe(true);
+    expect(useLiveStore.getState().fiftyFiftyHiddenIdsByQuestion.size).toBe(1);
+  });
+
   it.each(types)(
     '%s handles timeout exactly once without enabling oral Enter submission',
     (type) => {

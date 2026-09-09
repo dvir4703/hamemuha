@@ -287,17 +287,15 @@ describe('full live timing/audio routing', () => {
             .mockResolvedValue({ ...quiz, timing_mode: timingMode }),
         },
         contestant: {
-          getByQuizId: vi
-            .fn()
-            .mockResolvedValue([
-              {
-                id: 1,
-                quiz_id: 1,
-                display_order: 1,
-                name: 'א',
-                total_time_limit: timingMode === 'per_contestant' ? 30 : null,
-              },
-            ]),
+          getByQuizId: vi.fn().mockResolvedValue([
+            {
+              id: 1,
+              quiz_id: 1,
+              display_order: 1,
+              name: 'א',
+              total_time_limit: timingMode === 'per_contestant' ? 30 : null,
+            },
+          ]),
         },
         question: {
           getByQuizId: vi
@@ -333,6 +331,7 @@ describe('full live timing/audio routing', () => {
       advance(5000);
       expect(screen.getByRole('timer').getAttribute('aria-label')).toBe(label);
       press('Escape');
+      fireEvent.click(screen.getByRole('button', { name: 'ביטול' }));
       advance(timingMode === 'per_question' ? 8000 : 28000);
       if (timingMode === 'per_question') {
         expect(state().gamePhase).toBe('showing_answer');

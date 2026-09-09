@@ -56,6 +56,9 @@ export function useKeyboard({
       event.preventDefault();
       if (event.repeat) return;
       if (key === 'Escape') {
+        // Do not let the same keydown bubble into the confirmation dialog
+        // mounted by this callback and immediately cancel it again.
+        event.stopImmediatePropagation();
         onExitRequest();
         return;
       }

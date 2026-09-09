@@ -109,6 +109,7 @@ export default function LiveGame() {
   }, [loadQuiz, quizId, resetGame]);
 
   const handleExitRequest = useCallback(() => {
+    setCheatSheetOpen(false);
     setExitConfirmationOpen(true);
   }, []);
   const handleCancelExit = useCallback(() => {
@@ -125,13 +126,13 @@ export default function LiveGame() {
   }, [navigate, resetGame]);
 
   useKeyboard({
-    enabled:
+    enabled: !exitConfirmationOpen,
+    gameActionsEnabled:
       !isLoading &&
-      !exitConfirmationOpen &&
       !cheatSheetOpen &&
       gamePhase !== 'opening' &&
+      gamePhase !== 'intro_video' &&
       gamePhase !== 'finished',
-    gameActionsEnabled: gamePhase !== 'intro_video',
     onExitRequest: handleExitRequest,
   });
 
@@ -168,19 +169,22 @@ export default function LiveGame() {
 
   if (isLoading) {
     return (
-      <div className="live-stage relative grid min-h-screen place-items-center overflow-hidden px-6">
-        <div className="live-stage__atmosphere" aria-hidden="true" />
-        <div className="live-stage__beam" aria-hidden="true" />
-        <div className="text-center">
-          <LoaderCircle
-            className="mx-auto animate-spin text-[#f4b942]"
-            size={44}
-          />
-          <p className="mt-4 text-lg font-bold text-white/55">
-            טוענים את החידון…
-          </p>
+      <>
+        <div className="live-stage relative grid min-h-screen place-items-center overflow-hidden px-6">
+          <div className="live-stage__atmosphere" aria-hidden="true" />
+          <div className="live-stage__beam" aria-hidden="true" />
+          <div className="text-center">
+            <LoaderCircle
+              className="mx-auto animate-spin text-[#f4b942]"
+              size={44}
+            />
+            <p className="mt-4 text-lg font-bold text-white/55">
+              טוענים את החידון…
+            </p>
+          </div>
         </div>
-      </div>
+        {exitConfirmationDialog}
+      </>
     );
   }
 
@@ -190,13 +194,14 @@ export default function LiveGame() {
         <OpeningScreen
           quiz={quiz}
           canStart={contestants.length > 0}
-          enabled={!cheatSheetOpen}
+          enabled={!cheatSheetOpen && !exitConfirmationOpen}
           onBeginIntro={beginIntroVideo}
         />
         <KeyboardCheatSheet
           open={cheatSheetOpen}
           onOpenChange={setCheatSheetOpen}
         />
+        {exitConfirmationDialog}
       </>
     );
   }
@@ -215,14 +220,17 @@ export default function LiveGame() {
 
   if (gamePhase === 'finished') {
     return (
-      <ScoreboardScreen
-        quiz={quiz}
-        contestants={contestants}
-        scoresByContestant={scores}
-        statsByContestant={stats}
-        isSavingResults={isEnding}
-        onReturnHome={handleReturnHome}
-      />
+      <>
+        <ScoreboardScreen
+          quiz={quiz}
+          contestants={contestants}
+          scoresByContestant={scores}
+          statsByContestant={stats}
+          isSavingResults={isEnding}
+          onReturnHome={handleReturnHome}
+        />
+        {exitConfirmationDialog}
+      </>
     );
   }
 
